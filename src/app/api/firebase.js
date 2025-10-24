@@ -8,7 +8,7 @@ import { getStorage } from 'firebase/storage';
 
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey:"AIzaSyBvp48A7w4vCai5T3tt29KLylJ9X_ZLubA",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_URL,
   authDomain: "smart-auth-68b91.firebaseapp.com",
   projectId: "smart-auth-68b91",
   storageBucket: "smart-auth-68b91.firebasestorage.app",
