@@ -1,20 +1,13 @@
 "use client"
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash2, MoreVertical, TrendingUp, Users, MapPin, Calendar } from 'lucide-react';
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  serverTimestamp,
-  onSnapshot
-} from 'firebase/firestore';
-import { auth, db } from '../../api/firebase';
+// REMOVED: Direct Firebase imports
+// import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, where, orderBy, serverTimestamp, onSnapshot } from 'firebase/firestore';
+// import { db } from '../../api/firebase';
+
+// ADDED: API client and Firebase auth
+import { gymsApi } from '../../api/api-clients-with-gyms';
+import { auth } from '../../api/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useParams } from 'next/navigation';
 
@@ -44,7 +37,7 @@ const GymManagementDashboard = () => {
   const params = useParams();
   const id = params.slug;
   
-  console.log(id);
+  console.log('Organization ID:', id);
 
   // Initial gym form state with coordinates added
   const initialGymState = {
@@ -70,9 +63,8 @@ const GymManagementDashboard = () => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        // Get organization ID from user claims or custom claims
         const token = await currentUser.getIdTokenResult();
-        console.log(token);
+        console.log('User authenticated:', token);
         setOrganizationId(id || 'default-org');
       } else {
         setUser(null);
@@ -82,15 +74,23 @@ const GymManagementDashboard = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [id]);
 
   // Load gyms when user and organization ID are available
   useEffect(() => {
     if (user && organizationId) {
       loadGyms();
+      
+      // Set up polling for real-time updates (every 10 seconds)
+      const pollInterval = setInterval(() => {
+        loadGyms();
+      }, 10000);
+
+      return () => clearInterval(pollInterval);
     }
   }, [user, organizationId]);
 
+  // UPDATED: Load gyms via API
   const loadGyms = async () => {
     if (!organizationId) return;
     
@@ -98,43 +98,27 @@ const GymManagementDashboard = () => {
     setError('');
     
     try {
-      const gymsRef = collection(db, 'organizations', organizationId, 'gyms');
-      const q = query(gymsRef, orderBy('createdAt', 'desc'));
-      
-      // Set up real-time listener
-      const unsubscribe = onSnapshot(q, 
-        (snapshot) => {
-          const gymsData = [];
-          snapshot.forEach((doc) => {
-            gymsData.push({
-              id: doc.id,
-              ...doc.data(),
-              // Convert Firestore timestamps to readable format
-              createdAt: doc.data().createdAt?.toDate?.() || new Date(),
-              updatedAt: doc.data().updatedAt?.toDate?.() || new Date()
-            });
-          });
-          setGyms(gymsData);
-          setLoading(false);
-          console.log('Loaded gyms:', gymsData);
-        },
-        (error) => {
-          console.error('Error loading gyms:', error);
-          setError('Failed to load gyms');
-          setLoading(false);
-        }
-      );
+      console.log('Fetching gyms for organization:', organizationId);
+      const result = await gymsApi.getAll(organizationId);
 
-      // Return cleanup function
-      return unsubscribe;
+      if (result.success) {
+        setGyms(result.data || []);
+        console.log('Loaded gyms:', result.data);
+      } else {
+        console.error('Failed to load gyms:', result.error);
+        setError(result.error || 'Failed to load gyms');
+        setGyms([]);
+      }
     } catch (error) {
-      console.error('Error setting up gyms listener:', error);
-      setError('Failed to load gyms');
+      console.error('Error loading gyms:', error);
+      setError('Failed to load gyms: ' + error.message);
+      setGyms([]);
+    } finally {
       setLoading(false);
     }
   };
 
-  // Firestore CRUD operations
+  // UPDATED: Create gym via API
   const createGym = async (gymData) => {
     if (!organizationId || !user) {
       setError('User not authenticated');
@@ -146,34 +130,46 @@ const GymManagementDashboard = () => {
       setError('');
       
       console.log('Creating gym:', gymData);
-      
-      const gymsRef = collection(db, 'organizations', organizationId, 'gyms');
-      const docRef = await addDoc(gymsRef, {
-        ...gymData,
+
+      const result = await gymsApi.create(organizationId, {
+        name: gymData.name,
+        address: gymData.address,
+        phone: gymData.phone,
+        email: gymData.email,
         capacity: parseInt(gymData.capacity),
+        manager: gymData.manager,
+        status: gymData.status,
+        openingTime: gymData.openingTime,
+        closingTime: gymData.closingTime,
+        amenities: gymData.amenities,
         latitude: gymData.latitude ? parseFloat(gymData.latitude) : null,
         longitude: gymData.longitude ? parseFloat(gymData.longitude) : null,
-        members: 0,
-        monthlyRevenue: 0,
-        createdBy: user.uid,
-        organizationId: id,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
       });
-      
-      console.log('Gym created successfully with ID:', docRef.id);
-      
-      setShowAddModal(false);
-      setGymForm(initialGymState);
-      
+
+      if (result.success) {
+        console.log('Gym created successfully:', result.data);
+        setShowAddModal(false);
+        setGymForm(initialGymState);
+        
+        // Reload gyms to show the new one
+        await loadGyms();
+        
+        alert('Gym created successfully!');
+      } else {
+        console.error('Failed to create gym:', result.error);
+        setError(result.error || 'Failed to create gym');
+        alert('Failed to create gym: ' + result.error);
+      }
     } catch (error) {
       console.error('Error creating gym:', error);
       setError('Failed to create gym: ' + error.message);
+      alert('Error creating gym: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
+  // UPDATED: Update gym via API
   const updateGym = async (gymId, gymData) => {
     if (!organizationId || !user) {
       setError('User not authenticated');
@@ -185,61 +181,117 @@ const GymManagementDashboard = () => {
       setError('');
       
       console.log('Updating gym:', gymId, gymData);
-      
-      const gymRef = doc(db, 'organizations', organizationId, 'gyms', gymId);
-      await updateDoc(gymRef, {
-        ...gymData,
+
+      const result = await gymsApi.update(organizationId, gymId, {
+        name: gymData.name,
+        address: gymData.address,
+        phone: gymData.phone,
+        email: gymData.email,
         capacity: parseInt(gymData.capacity),
+        manager: gymData.manager,
+        status: gymData.status,
+        openingTime: gymData.openingTime,
+        closingTime: gymData.closingTime,
+        amenities: gymData.amenities,
         latitude: gymData.latitude ? parseFloat(gymData.latitude) : null,
         longitude: gymData.longitude ? parseFloat(gymData.longitude) : null,
-        updatedBy: user.uid,
-        updatedAt: serverTimestamp()
       });
-      
-      console.log('Gym updated successfully');
-      
-      setShowEditModal(false);
-      setEditingGym(null);
-      setGymForm(initialGymState);
-      
+
+      if (result.success) {
+        console.log('Gym updated successfully:', result.data);
+        setShowEditModal(false);
+        setEditingGym(null);
+        setGymForm(initialGymState);
+        
+        // Reload gyms to show updates
+        await loadGyms();
+        
+        alert('Gym updated successfully!');
+      } else {
+        console.error('Failed to update gym:', result.error);
+        setError(result.error || 'Failed to update gym');
+        alert('Failed to update gym: ' + result.error);
+      }
     } catch (error) {
       console.error('Error updating gym:', error);
       setError('Failed to update gym: ' + error.message);
+      alert('Error updating gym: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
+  // UPDATED: Delete gym via API
   const deleteGym = async (gymId) => {
     if (!organizationId || !user) {
       setError('User not authenticated');
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this gym? This action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to delete this gym?')) {
       return;
     }
-    
+
     try {
       setLoading(true);
       setError('');
       
       console.log('Deleting gym:', gymId);
-      
-      const gymRef = doc(db, 'organizations', organizationId, 'gyms', gymId);
-      await deleteDoc(gymRef);
-      
-      console.log('Gym deleted successfully');
-      
+
+      const result = await gymsApi.delete(organizationId, gymId);
+
+      if (result.success) {
+        console.log('Gym deleted successfully');
+        
+        // Reload gyms to reflect deletion
+        await loadGyms();
+        
+        alert('Gym deleted successfully!');
+      } else {
+        console.error('Failed to delete gym:', result.error);
+        setError(result.error || 'Failed to delete gym');
+        alert('Failed to delete gym: ' + result.error);
+      }
     } catch (error) {
       console.error('Error deleting gym:', error);
       setError('Failed to delete gym: ' + error.message);
+      alert('Error deleting gym: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleEdit = (gym) => {
+    console.log('Editing gym:', gym);
+    setEditingGym(gym);
+    setGymForm({
+      name: gym.name || '',
+      address: gym.address || '',
+      phone: gym.phone || '',
+      email: gym.email || '',
+      capacity: gym.capacity?.toString() || '',
+      manager: gym.manager || '',
+      status: gym.status || 'ACTIVE',
+      openingTime: gym.openingTime || '',
+      closingTime: gym.closingTime || '',
+      amenities: gym.amenities || [],
+      latitude: gym.latitude?.toString() || '',
+      longitude: gym.longitude?.toString() || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleDelete = (gymId) => {
+    deleteGym(gymId);
+  };
+
   const handleSubmit = () => {
+    // Validate required fields
+    if (!gymForm.name || !gymForm.address || !gymForm.phone || !gymForm.email || !gymForm.capacity || !gymForm.manager) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
     if (editingGym) {
       updateGym(editingGym.id, gymForm);
     } else {
@@ -247,36 +299,7 @@ const GymManagementDashboard = () => {
     }
   };
 
-  const handleEdit = (gym) => {
-    setEditingGym(gym);
-    setGymForm({
-      name: gym.name,
-      address: gym.address,
-      phone: gym.phone,
-      email: gym.email,
-      capacity: gym.capacity.toString(),
-      manager: gym.manager,
-      status: gym.status,
-      openingTime: gym.openingTime,
-      closingTime: gym.closingTime,
-      amenities: gym.amenities,
-      latitude: gym.latitude ? gym.latitude.toString() : '',
-      longitude: gym.longitude ? gym.longitude.toString() : ''
-    });
-    setShowEditModal(true);
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      'ACTIVE': 'bg-green-100 text-green-800',
-      'MAINTENANCE': 'bg-yellow-100 text-yellow-800',
-      'CLOSED': 'bg-red-100 text-red-800',
-      'INACTIVE': 'bg-gray-100 text-gray-800'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  const handleSelectGym = (gymId) => {
+  const handleCheckbox = (gymId) => {
     setSelectedGyms(prev => 
       prev.includes(gymId) 
         ? prev.filter(id => id !== gymId)
@@ -284,198 +307,169 @@ const GymManagementDashboard = () => {
     );
   };
 
-  const handleSelectAll = () => {
-    setSelectedGyms(selectedGyms.length === gyms.length ? [] : gyms.map(gym => gym.id));
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'ACTIVE':
+        return 'bg-green-100 text-green-800';
+      case 'MAINTENANCE':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'CLOSED':
+        return 'bg-red-100 text-red-800';
+      case 'INACTIVE':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
-  const filteredGyms = gyms.filter(gym => 
-    gym.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    gym.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    gym.manager.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredGyms = gyms.filter(gym =>
+    gym.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    gym.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    gym.manager?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto">
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
-            <span className="block sm:inline">{error}</span>
-            <button 
-              className="absolute top-0 bottom-0 right-0 px-4 py-3"
-              onClick={() => setError('')}
-            >
-              <span className="text-red-500">×</span>
-            </button>
-          </div>
-        )}
-
-        {/* Authentication Check */}
-        {!user ? (
-          <div className="text-center py-12">
-            <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Authentication Required</h2>
-              <p className="text-gray-600">Please sign in to access the gym management dashboard.</p>
+        {loading && gyms.length === 0 ? (
+          <div className="flex items-center justify-center h-screen">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading gyms...</p>
             </div>
           </div>
         ) : (
           <>
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-6">Gym Management</h1>
-              <p className="text-gray-600 mb-6">{organizationData.name}</p>
+            {/* Header Stats */}
+            <div className="bg-white shadow-sm rounded-lg p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-2xl font-bold text-gray-900">{organizationData.name}</h1>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Gym
+                </button>
+              </div>
               
-              {/* Organization Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Total Gyms</p>
-                      <p className="text-3xl font-bold text-gray-900 mt-1">{gyms.length}</p>
+                      <p className="text-sm text-gray-600">Total Gyms</p>
+                      <p className="text-2xl font-bold text-gray-900">{organizationData.totalGyms}</p>
                     </div>
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <MapPin className="w-5 h-5 text-blue-600" />
-                    </div>
+                    <MapPin className="w-8 h-8 text-blue-600" />
                   </div>
                 </div>
                 
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <div className="bg-green-50 p-4 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Active Members</p>
-                      <p className="text-3xl font-bold text-gray-900 mt-1">{organizationData.activeMembers.toLocaleString()}</p>
+                      <p className="text-sm text-gray-600">Active Members</p>
+                      <p className="text-2xl font-bold text-gray-900">{organizationData.activeMembers}</p>
                     </div>
-                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <Users className="w-5 h-5 text-green-600" />
-                    </div>
+                    <Users className="w-8 h-8 text-green-600" />
                   </div>
                 </div>
                 
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <div className="bg-purple-50 p-4 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
-                      <p className="text-3xl font-bold text-gray-900 mt-1">{organizationData.monthlyRevenue}</p>
+                      <p className="text-sm text-gray-600">Monthly Revenue</p>
+                      <p className="text-2xl font-bold text-gray-900">₹{organizationData.monthlyRevenue}</p>
                     </div>
-                    <div className="flex items-center text-green-600 text-sm font-medium">
-                      <TrendingUp className="w-4 h-4 mr-1" />
-                      {organizationData.growthRate}
-                    </div>
+                    <TrendingUp className="w-8 h-8 text-purple-600" />
                   </div>
                 </div>
                 
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <div className="bg-orange-50 p-4 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Active Gyms</p>
-                      <p className="text-3xl font-bold text-gray-900 mt-1">{gyms.filter(g => g.status === 'ACTIVE').length}</p>
+                      <p className="text-sm text-gray-600">Growth Rate</p>
+                      <p className="text-2xl font-bold text-gray-900">{organizationData.growthRate}</p>
                     </div>
-                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-purple-600" />
-                    </div>
+                    <Calendar className="w-8 h-8 text-orange-600" />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Main Content */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-              <div className="p-6 border-b border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  {/* Search */}
-                  <div className="flex-1 max-w-md">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <input
-                        type="text"
-                        placeholder="Search gyms..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                <p className="font-medium">Error: {error}</p>
+              </div>
+            )}
 
-                  {/* Add Gym Button */}
-                  <button 
-                    onClick={() => setShowAddModal(true)}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            {/* Gym List */}
+            <div className="bg-white shadow-sm rounded-lg">
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search gyms..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <button
+                    onClick={() => setViewMode(viewMode === 'list' ? 'grid' : 'list')}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Gym
+                    {viewMode === 'list' ? 'Grid View' : 'List View'}
                   </button>
                 </div>
               </div>
 
-              {/* Table */}
-              <div className="overflow-x-auto">
-                {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : (
+              <div className="p-4">
+                {viewMode === 'list' ? (
                   <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="w-12 px-6 py-4">
-                          <input 
-                            type="checkbox" 
-                            checked={selectedGyms.length === filteredGyms.length && filteredGyms.length > 0}
-                            onChange={handleSelectAll}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gym Name</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manager</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Members</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
-                        <th className="w-12 px-6 py-4"></th>
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Name</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Manager</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Address</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Status</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Capacity</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Members</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody>
                       {filteredGyms.map((gym) => (
-                        <tr key={gym.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4">
-                            <input 
-                              type="checkbox" 
-                              checked={selectedGyms.includes(gym.id)}
-                              onChange={() => handleSelectGym(gym.id)}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                          </td>
-                          <td className="px-6 py-4">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{gym.name}</div>
-                              <div className="text-sm text-gray-500">{gym.address}</div>
-                              <div className="text-sm text-gray-500">{gym.phone}</div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm text-gray-900">{gym.manager}</div>
+                        <tr key={gym.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <div className="font-medium text-gray-900">{gym.name}</div>
                             <div className="text-sm text-gray-500">{gym.email}</div>
                           </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(gym.status)}`}>
+                          <td className="py-3 px-4 text-gray-700">{gym.manager}</td>
+                          <td className="py-3 px-4 text-gray-700 max-w-xs truncate">{gym.address}</td>
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(gym.status)}`}>
                               {gym.status}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            {gym.members}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            {gym.capacity}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center space-x-2">
-                              <button 
+                          <td className="py-3 px-4 text-gray-700">{gym.capacity}</td>
+                          <td className="py-3 px-4 text-gray-700">{gym.members || 0}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
                                 onClick={() => handleEdit(gym)}
-                                className="text-blue-600 hover:text-blue-800"
+                                className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                title="Edit gym"
                               >
                                 <Edit className="w-4 h-4" />
                               </button>
-                              <button 
-                                onClick={() => deleteGym(gym.id)}
-                                className="text-red-600 hover:text-red-800"
+                              <button
+                                onClick={() => handleDelete(gym.id)}
+                                className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                title="Delete gym"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -485,6 +479,62 @@ const GymManagementDashboard = () => {
                       ))}
                     </tbody>
                   </table>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredGyms.map((gym) => (
+                      <div key={gym.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900">{gym.name}</h3>
+                            <p className="text-sm text-gray-500">{gym.manager}</p>
+                          </div>
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(gym.status)}`}>
+                            {gym.status}
+                          </span>
+                        </div>
+                        
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <MapPin className="w-4 h-4" />
+                            <span className="truncate">{gym.address}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Users className="w-4 h-4" />
+                            <span>{gym.members || 0} / {gym.capacity} members</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
+                          <button
+                            onClick={() => handleEdit(gym)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(gym.id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {filteredGyms.length === 0 && !loading && (
+                  <div className="text-center py-12">
+                    <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">No gyms found</p>
+                    <button
+                      onClick={() => setShowAddModal(true)}
+                      className="mt-4 text-blue-600 hover:text-blue-700"
+                    >
+                      Add your first gym
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

@@ -9,21 +9,9 @@ import Layouts from './Layouts'
 import TicketSupportSystem from './NotificationSystem'
 import Image from 'next/image';
 
-// Firestore imports
-import { db } from '../api/firebase';
-import {
-  collection,
-  doc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  getDocs,
-  onSnapshot,
-  query,
-  orderBy,
-  addDoc,
-  serverTimestamp
-} from "firebase/firestore";
+// Import API client instead of Firebase
+import { organizationsApi, devicesApi } from '../api/api-client';
+
 import LicenseManagement from './LicenseManagement'
 import CameraLayout from './CameraLayout';
 import NotificationSystem from './NotificationSystem';
@@ -39,198 +27,209 @@ const Dashboard = () => {
   const [isLoadingDevices, setIsLoadingDevices] = useState(true);
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(true);
 
-  // Organization data - now loaded from Firestore
+  // Organization data - now loaded from API
   const [users, setUsers] = useState([]);
 
-  // Hardware devices state - managed with Firestore
+  // Hardware devices state - managed via API
   const [devices, setDevices] = useState([]);
 
-  // Load organizations from Firestore
+  // Load organizations from API
   useEffect(() => {
     const loadOrganizations = async () => {
       try {
         setIsLoadingOrgs(true);
-
-        // Simple query without orderBy to avoid index issues
-        const orgsCollection = collection(db, "organizations");
-
-        // Set up real-time listener for organizations
-        const unsubscribe = onSnapshot(orgsCollection, (querySnapshot) => {
-          const orgsData = [];
-          querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            console.log('Organization document:', doc.id, data); // Debug log
-            orgsData.push({
-              id: doc.id,
-              ...data
-            });
-          });
-
-          setUsers(orgsData);
-          setIsLoadingOrgs(false);
-          console.log('Organizations loaded from Firestore:', orgsData);
-        }, (error) => {
-          console.error("Error loading organizations:", error);
-          // Try a simple getDocs as fallback
-          loadOrganizationsFallback();
-        });
-
-        // Return cleanup function
-        return unsubscribe;
+        
+        const result = await organizationsApi.getAll();
+        
+        if (result.success && result.data) {
+          setUsers(result.data);
+          console.log('Organizations loaded from API:', result.data);
+        } else {
+          console.error('Failed to load organizations:', result.error);
+          alert('Failed to load organizations: ' + result.error);
+        }
       } catch (error) {
-        console.error("Error setting up organizations listener:", error);
-        // Try a simple getDocs as fallback
-        loadOrganizationsFallback();
-      }
-    };
-
-    // Fallback method using getDocs
-    const loadOrganizationsFallback = async () => {
-      try {
-        console.log('Trying fallback method for organizations...');
-        const querySnapshot = await getDocs(collection(db, "organizations"));
-        const orgsData = [];
-
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          console.log('Fallback - Organization document:', doc.id, data);
-          orgsData.push({
-            id: doc.id,
-            ...data
-          });
-        });
-
-        setUsers(orgsData);
-        setIsLoadingOrgs(false);
-        console.log('Organizations loaded via fallback:', orgsData);
-      } catch (error) {
-        console.error("Fallback method also failed:", error);
+        console.error("Error loading organizations:", error);
+        alert('Error loading organizations. Please try again.');
+      } finally {
         setIsLoadingOrgs(false);
       }
     };
 
-    const unsubscribe = loadOrganizations();
-
-    // Cleanup on unmount
-    return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') {
-        unsubscribe();
-      }
-    };
+    loadOrganizations();
   }, []);
 
-  // Load devices from Firestore
+  // Load devices from API
   useEffect(() => {
     const loadDevices = async () => {
       try {
         setIsLoadingDevices(true);
-
-        // Create query to get devices ordered by creation date
-        const devicesQuery = query(
-          collection(db, "devices"),
-          orderBy("createdAt", "desc")
-        );
-
-        // Set up real-time listener
-        const unsubscribe = onSnapshot(devicesQuery, (querySnapshot) => {
-          const devicesData = [];
-          querySnapshot.forEach((doc) => {
-            devicesData.push({
-              id: doc.id,
-              ...doc.data()
-            });
-          });
-
-          setDevices(devicesData);
-          setIsLoadingDevices(false);
-          console.log('Devices loaded from Firestore:', devicesData);
-        }, (error) => {
-          console.error("Error loading devices:", error);
-          setIsLoadingDevices(false);
-        });
-
-        // Return cleanup function
-        return unsubscribe;
+        
+        const result = await devicesApi.getAll();
+        
+        if (result.success && result.data) {
+          setDevices(result.data);
+          console.log('Devices loaded from API:', result.data);
+        } else {
+          console.error('Failed to load devices:', result.error);
+          alert('Failed to load devices: ' + result.error);
+        }
       } catch (error) {
-        console.error("Error setting up devices listener:", error);
+        console.error("Error loading devices:", error);
+        alert('Error loading devices. Please try again.');
+      } finally {
         setIsLoadingDevices(false);
       }
     };
 
-    const unsubscribe = loadDevices();
-
-    // Cleanup on unmount
-    return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') {
-        unsubscribe();
-      }
-    };
+    loadDevices();
   }, []);
 
-  // CRUD Operations for Devices (Firestore integration)
+  // CRUD Operations for Organizations (using API)
+  const handleCreateOrganization = async (organizationData) => {
+    try {
+      const result = await organizationsApi.create(organizationData);
+      
+      if (result.success) {
+        console.log('Organization created:', result.data);
+        // Reload organizations to get fresh data
+        const refreshResult = await organizationsApi.getAll();
+        if (refreshResult.success) {
+          setUsers(refreshResult.data);
+        }
+        alert('Organization created successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to create organization');
+      }
+    } catch (error) {
+      console.error("Error creating organization:", error);
+      alert("Failed to create organization: " + error.message);
+    }
+  };
+
+  const handleUpdateOrganization = async (organizationData) => {
+    try {
+      const { id, ...updateData } = organizationData;
+      const result = await organizationsApi.update(id, updateData);
+      
+      if (result.success) {
+        console.log('Organization updated:', result.data);
+        // Reload organizations
+        const refreshResult = await organizationsApi.getAll();
+        if (refreshResult.success) {
+          setUsers(refreshResult.data);
+        }
+        alert('Organization updated successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to update organization');
+      }
+    } catch (error) {
+      console.error("Error updating organization:", error);
+      alert("Failed to update organization: " + error.message);
+    }
+  };
+
+  const handleDeleteOrganization = async (organizationId) => {
+    if (!window.confirm('Are you sure you want to delete this organization?')) {
+      return;
+    }
+
+    try {
+      const result = await organizationsApi.delete(organizationId);
+      
+      if (result.success) {
+        console.log('Organization deleted:', organizationId);
+        // Reload organizations
+        const refreshResult = await organizationsApi.getAll();
+        if (refreshResult.success) {
+          setUsers(refreshResult.data);
+        }
+        alert('Organization deleted successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to delete organization');
+      }
+    } catch (error) {
+      console.error("Error deleting organization:", error);
+      alert("Failed to delete organization: " + error.message);
+    }
+  };
+
+  // CRUD Operations for Devices (using API)
   const handleCreateDevice = async (deviceData) => {
     try {
-      // Prepare device data for Firestore
-      const firestoreDeviceData = {
-        ...deviceData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-
-      // Save to Firestore (let Firestore generate the ID)
-      const docRef = await addDoc(collection(db, "devices"), firestoreDeviceData);
-
-      console.log('Device created in Firestore with ID:', docRef.id);
+      const result = await devicesApi.create(deviceData);
+      
+      if (result.success) {
+        console.log('Device created:', result.data);
+        // Reload devices
+        const refreshResult = await devicesApi.getAll();
+        if (refreshResult.success) {
+          setDevices(refreshResult.data);
+        }
+        alert('Device created successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to create device');
+      }
     } catch (error) {
       console.error("Error creating device:", error);
-      alert("Failed to create device. Please try again.");
+      alert("Failed to create device: " + error.message);
     }
   };
 
   const handleUpdateDevice = async (deviceData) => {
     try {
-      // Prepare updated data
-      const updatedData = {
-        ...deviceData,
-        updatedAt: serverTimestamp()
-      };
-
-      // Remove the id field from the update data
-      const { id, ...dataToUpdate } = updatedData;
-
-      // Update in Firestore
-      const deviceRef = doc(db, "devices", deviceData.id);
-      await updateDoc(deviceRef, dataToUpdate);
-
-      console.log('Device updated in Firestore:', deviceData.id);
+      const { id, ...updateData } = deviceData;
+      const result = await devicesApi.update(id, updateData);
+      
+      if (result.success) {
+        console.log('Device updated:', result.data);
+        // Reload devices
+        const refreshResult = await devicesApi.getAll();
+        if (refreshResult.success) {
+          setDevices(refreshResult.data);
+        }
+        alert('Device updated successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to update device');
+      }
     } catch (error) {
       console.error("Error updating device:", error);
-      alert("Failed to update device. Please try again.");
+      alert("Failed to update device: " + error.message);
     }
   };
 
   const handleDeleteDevice = async (deviceId) => {
-    if (window.confirm('Are you sure you want to delete this device?')) {
-      try {
-        // Delete from Firestore
-        await deleteDoc(doc(db, "devices", deviceId));
-
-        console.log('Device deleted from Firestore:', deviceId);
-      } catch (error) {
-        console.error("Error deleting device:", error);
-        alert("Failed to delete device. Please try again.");
-      }
+    if (!window.confirm('Are you sure you want to delete this device?')) {
+      return;
     }
-  };
 
-  // Modal handlers for Organizations
-  const handleOpenCreateModal = () => {
-    setEditingUser(null);
-    setIsModalOpen(true);
+    try {
+      const result = await devicesApi.delete(deviceId);
+      
+      if (result.success) {
+        console.log('Device deleted:', deviceId);
+        // Reload devices
+        const refreshResult = await devicesApi.getAll();
+        if (refreshResult.success) {
+          setDevices(refreshResult.data);
+        }
+        alert('Device deleted successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to delete device');
+      }
+    } catch (error) {
+      console.error("Error deleting device:", error);
+      alert("Failed to delete device: " + error.message);
+    }
   };
 
   const handleOpenEditModal = (user) => {
     setEditingUser(user);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenCreateModal = () => {
+    setEditingUser(null);
     setIsModalOpen(true);
   };
 
@@ -239,50 +238,30 @@ const Dashboard = () => {
     setEditingUser(null);
   };
 
-  // Get statistics for dashboard
-  const getStats = () => {
-    const activeDevices = devices.filter(d => d.status === 'Active').length;
-    const totalDevices = devices.length;
-    const devicesByOrg = devices.reduce((acc, device) => {
-      const orgName = device.organization || 'Unassigned';
-      acc[orgName] = (acc[orgName] || 0) + 1;
+  // Calculate statistics
+  const stats = {
+    organizations: users.length,
+    activeUsers: users.filter(u => u.status === 'active').length,
+    totalDevices: devices.length,
+    activeDevices: devices.filter(d => d.status === 'active').length,
+    unassignedDevices: devices.filter(d => !d.organizationId).length,
+    cameras: devices.filter(d => d.type === 'camera').length,
+    sensors: devices.filter(d => d.type === 'sensor').length,
+    devicesByOrg: devices.reduce((acc, device) => {
+      const org = device.organizationName || 'Unassigned';
+      acc[org] = (acc[org] || 0) + 1;
       return acc;
-    }, {});
-
-    return {
-      organizations: users.length,
-      activeUsers: users.filter(u => u.status === 'Active').length,
-      onboardingUsers: users.filter(u => u.status === 'Onboarding').length,
-      totalDevices,
-      activeDevices,
-      cameras: devices.filter(d => d.deviceType === 'camera').length,
-      sensors: devices.filter(d => d.deviceType === 'sensor').length,
-      unassignedDevices: devices.filter(d => d.organization === 'Unassigned' || !d.organization).length,
-      devicesByOrg
-    };
+    }, {})
   };
 
-  const stats = getStats();
-
-  // Function to render content based on active tab
   const renderActiveContent = () => {
     switch (activeTab) {
       case 'Dashboard':
         return (
           <div className="p-6">
-            <div className="mb-6">
-              <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
-              <span className="bg-[#d1f5ec] text-black px-4 py-1 rounded text-xs">
-                Overview and Analytics
-              </span>
-              {(isLoadingOrgs || isLoadingDevices) && (
-                <div className="mt-2 text-sm text-blue-600">
-                   <Image src="/filter-green.png" alt='' width={40} height={40} /> Loading data from Firestore...
-                </div>
-              )}
-            </div>
+            <h1 className="text-2xl font-bold mb-6">Dashboard Overview</h1>
 
-            {/* Enhanced Dashboard Stats */}
+            {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <div className="bg-white p-6 rounded-lg shadow">
                 <h3 className="text-sm font-medium text-gray-500 mb-1">Total Organizations</h3>
@@ -308,7 +287,7 @@ const Dashboard = () => {
                 <h3 className="text-sm font-medium text-gray-500 mb-1">Device Types</h3>
                 <div className="text-sm text-gray-600">
                   <div> <Image src="/camera-green.png" alt="Camera" width={24} height={24} /> Cameras: {isLoadingDevices ? '...' : stats.cameras}</div>
-                  <div> <Image src="/sensor-green.png" alt="Camera" width={24} height={24} /> Sensors: {isLoadingDevices ? '...' : stats.sensors}</div>
+                  <div> <Image src="/sensor-green.png" alt="Sensor" width={24} height={24} /> Sensors: {isLoadingDevices ? '...' : stats.sensors}</div>
                 </div>
               </div>
             </div>
@@ -359,7 +338,7 @@ const Dashboard = () => {
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                     <span className="text-sm text-gray-600">
-                      Firestore real-time sync active
+                      API middleware active
                     </span>
                   </div>
                 </div>
@@ -422,7 +401,7 @@ const Dashboard = () => {
             {isLoadingOrgs ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-2 text-[#d1f5ec] text-white">Loading organizations from Firestore...</span>
+                <span className="ml-2 text-gray-600">Loading organizations from API...</span>
               </div>
             ) : (
               <MainTable
@@ -431,6 +410,7 @@ const Dashboard = () => {
                 setSearchTerm={setSearchTerm}
                 readOnly={false}
                 onEdit={handleOpenEditModal}
+                onDelete={handleDeleteOrganization}
               />
             )}
           </>
@@ -444,7 +424,6 @@ const Dashboard = () => {
             onCreateDevice={handleCreateDevice}
             onUpdateDevice={handleUpdateDevice}
             onDeleteDevice={handleDeleteDevice}
-            db={db}
             isLoading={isLoadingDevices}
           />
         );
@@ -458,21 +437,18 @@ const Dashboard = () => {
         return (
           <LicenseManagement
             organizations={users}
-            db={db}
             isLoadingOrgs={isLoadingOrgs}
           />
         );
       
       case 'NotificationSystem':
         return(
-          <NotificationSystem db={db}/>
+          <NotificationSystem />
         )
 
       case 'Camera':
         return(
-          <CameraLayout
-          
-          />
+          <CameraLayout />
         )
 
       default:
@@ -500,6 +476,7 @@ const Dashboard = () => {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         initialData={editingUser}
+        onSave={editingUser ? handleUpdateOrganization : handleCreateOrganization}
       />
     </div>
   );

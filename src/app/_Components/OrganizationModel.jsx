@@ -1,26 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { db } from '../api/firebase'; // Adjust the path accordingly
-import { collection, doc, setDoc, updateDoc } from "firebase/firestore";
+// REMOVED: Direct Firebase imports
+// import { db } from '../api/firebase';
+// import { collection, doc, setDoc, updateDoc } from "firebase/firestore";
 
+// ADDED: Import API client
+import { organizationsApi } from '../api/api-client';
 
 const OrganizationModal = ({ isOpen, onClose, initialData = null }) => {
   const [formData, setFormData] = useState({
-    email: initialData?.email || '',
-    firstName: initialData?.firstName || '',
-    lastName: initialData?.lastName || '',
-    address1: initialData?.address1 || '',
-    address2: initialData?.address2 || '',
-    city: initialData?.city || '',
-    state: initialData?.state || '',
-    zip: initialData?.zip || '',
-    role: initialData?.role || 'User',
-    status: initialData?.status || 'Active',
-    tags: initialData?.tags || ['Marketing']
+    email: '',
+    firstName: '',
+    lastName: '',
+    address1: '',
+    address2: '',
+    city: '',
+    state: '',
+    zip: '',
+    role: 'User',
+    status: 'Active',
+    tags: ['Marketing']
   });
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // IMPORTANT: Update form when initialData changes (for edit mode)
+  useEffect(() => {
+    if (initialData) {
+      console.log('Loading initial data:', initialData);
+      setFormData({
+        email: initialData.email || '',
+        firstName: initialData.firstName || '',
+        lastName: initialData.lastName || '',
+        address1: initialData.address1 || '',
+        address2: initialData.address2 || '',
+        city: initialData.city || '',
+        state: initialData.state || '',
+        zip: initialData.zip || '',
+        role: initialData.role || 'User',
+        status: initialData.status || 'Active',
+        tags: initialData.tags || ['Marketing']
+      });
+    } else {
+      // Reset form for create mode
+      setFormData({
+        email: '',
+        firstName: '',
+        lastName: '',
+        address1: '',
+        address2: '',
+        city: '',
+        state: '',
+        zip: '',
+        role: 'User',
+        status: 'Active',
+        tags: ['Marketing']
+      });
+    }
+  }, [initialData]);
+
   const validateForm = () => {
     const newErrors = {};
     
@@ -79,40 +118,64 @@ const OrganizationModal = ({ isOpen, onClose, initialData = null }) => {
     setIsSubmitting(true);
 
     try {
-      const userData = {
-        ...formData,
-        name: `${formData.firstName} ${formData.lastName}`,
+      // Prepare organization data for API
+      const organizationData = {
+        email: formData.email,
+        name: `${formData.firstName} ${formData.lastName}`, // Backend expects 'name' field
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        address: `${formData.address1}${formData.address2 ? ', ' + formData.address2 : ''}`, // Backend expects single 'address' field
+        city: formData.city,
+        state: formData.state,
+        zip: formData.zip,
+        role: formData.role,
+        status: formData.status.toLowerCase(), // Backend expects lowercase status
+        tags: formData.tags,
         avatar: formData.firstName.charAt(0).toUpperCase(),
       };
 
+      let result;
       if (initialData?.id) {
-        // Update existing document
-        const docRef = doc(db, "organizations", initialData.id);
-        await updateDoc(docRef, userData);
+        // Update existing organization via API
+        result = await organizationsApi.update(initialData.id, organizationData);
       } else {
-        // Create new document with auto-generated ID
-        const id = Date.now().toString();
-        const docRef = doc(db, "organizations", id);
-        await setDoc(docRef, { ...userData, id });
+        // Create new organization via API
+        result = await organizationsApi.create(organizationData);
       }
 
-      onClose();
+      // Check if API call was successful
+      if (result.success) {
+        console.log('Organization saved successfully:', result.data);
+        
+        // Close modal on success
+        onClose();
 
-      setFormData({
-        email: '',
-        firstName: '',
-        lastName: '',
-        address1: '',
-        address2: '',
-        city: '',
-        state: '',
-        zip: '',
-        role: 'User',
-        status: 'Active',
-        tags: ['Marketing']
-      });
+        // Reset form
+        setFormData({
+          email: '',
+          firstName: '',
+          lastName: '',
+          address1: '',
+          address2: '',
+          city: '',
+          state: '',
+          zip: '',
+          role: 'User',
+          status: 'Active',
+          tags: ['Marketing']
+        });
+
+        // Show success message (optional)
+        alert(`Organization ${initialData ? 'updated' : 'created'} successfully!`);
+      } else {
+        // Handle API error
+        console.error('API error:', result.error);
+        alert(`Failed to ${initialData ? 'update' : 'create'} organization: ${result.error}`);
+      }
+
     } catch (error) {
       console.error('Error submitting form:', error);
+      alert(`An unexpected error occurred: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }

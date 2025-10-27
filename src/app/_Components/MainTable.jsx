@@ -11,20 +11,13 @@ import {
   List
 } from 'lucide-react';
 
-import { 
-  collection,
-  onSnapshot,
-  doc,
-  updateDoc,
-  deleteDoc,
-  query,
-  orderBy
-} from 'firebase/firestore';
-import { db } from '../api/firebase';
+// UPDATED: Import API client instead of direct Firebase
+import { organizationsApi } from '../api/api-client';
+
 import { useParams, useRouter } from 'next/navigation';
 
-const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg }) => {
-  const [data, setData] = useState([]);
+// UPDATED: Add onEdit prop to receive the edit handler from parent
+const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg, onEdit, data = [] }) => {
   const router = useRouter();
   
   // View mode state (grid or list)
@@ -41,17 +34,6 @@ const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg }) => {
     key: 'name',
     direction: 'asc' // 'asc' or 'desc'
   });
-
-  // Firestore realtime listener
-  useEffect(() => {
-    const q = query(collection(db, 'organizations'), orderBy('name', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const orgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setData(orgs);
-      console.log(orgs);
-    });
-    return () => unsubscribe();
-  }, []);
 
   const createSlug = (name) => {
     return name
@@ -76,21 +58,51 @@ const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg }) => {
     console.log(`Navigating to: /organizations/${slug}`);
   };
 
-  const handleEdit = async (user) => {
-    try {
-      const userRef = doc(db, 'organizations', user.id);
-      const newStatus = user.status === 'Active' ? 'Inactive' : 'Active';
-      await updateDoc(userRef, { status: newStatus });
-    } catch (error) {
-      console.error('Error updating document:', error);
+  // UPDATED: Pass full organization data to parent's edit handler
+  const handleEdit = (organization) => {
+    if (onEdit) {
+      // Parse the address back into address1 and address2 if needed
+      const addressParts = organization.address ? organization.address.split(', ') : ['', ''];
+      
+      const editData = {
+        id: organization.id,
+        email: organization.email || '',
+        firstName: organization.firstName || organization.name?.split(' ')[0] || '',
+        lastName: organization.lastName || organization.name?.split(' ').slice(1).join(' ') || '',
+        address1: addressParts[0] || '',
+        address2: addressParts[1] || '',
+        city: organization.city || '',
+        state: organization.state || '',
+        zip: organization.zip || '',
+        role: organization.role || 'User',
+        status: organization.status || 'Active',
+        tags: organization.tags || [],
+        name: organization.name || '',
+        avatar: organization.avatar || ''
+      };
+      
+      console.log('Editing organization:', editData);
+      onEdit(editData);
     }
   };
 
+  // UPDATED: Use API for delete
   const handleDelete = async (userId) => {
+    if (!window.confirm('Are you sure you want to delete this organization?')) {
+      return;
+    }
+
     try {
-      await deleteDoc(doc(db, 'organizations', userId));
+      const result = await organizationsApi.delete(userId);
+      if (result.success) {
+        console.log('Organization deleted successfully');
+        // Parent component should refresh the data
+      } else {
+        alert('Failed to delete organization: ' + result.error);
+      }
     } catch (error) {
-      console.error('Error deleting document:', error);
+      console.error('Error deleting organization:', error);
+      alert('An error occurred while deleting the organization');
     }
   };
 
@@ -117,13 +129,16 @@ const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg }) => {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'Active':
+    const normalizedStatus = status?.toLowerCase();
+    switch (normalizedStatus) {
+      case 'active':
         return 'bg-green-100 text-green-800';
-      case 'Onboarding':
+      case 'onboarding':
         return 'bg-orange-100 text-orange-800';
-      case 'Inactive':
+      case 'inactive':
         return 'bg-red-100 text-red-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -153,7 +168,9 @@ const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg }) => {
 
   // Apply status filter
   if (selectedFilters.status !== 'All') {
-    filteredData = filteredData.filter(user => user.status === selectedFilters.status);
+    filteredData = filteredData.filter(user => 
+      user.status?.toLowerCase() === selectedFilters.status.toLowerCase()
+    );
   }
 
   // Apply sorting
@@ -199,22 +216,21 @@ const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg }) => {
               <div className="relative">
                 <button 
                   onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                  className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
-                  <span>{selectedFilters.status}</span>
+                  <span className="text-sm">Status: {selectedFilters.status}</span>
                   <ChevronDown className="w-4 h-4" />
                 </button>
                 
-                {/* Dropdown Menu */}
                 {showFilterDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                     <div className="py-1">
-                      {['All', 'Active', 'Onboarding', 'Inactive'].map((status) => (
+                      {['All', 'Active', 'Inactive', 'Onboarding', 'Pending'].map((status) => (
                         <button
                           key={status}
                           onClick={() => handleFilterChange(status)}
-                          className={`w-full text-left px-4 py-2 hover:bg-gray-50 ${
-                            selectedFilters.status === status ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${
+                            selectedFilters.status === status ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                           }`}
                         >
                           {status}
@@ -228,12 +244,12 @@ const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg }) => {
           </div>
         </div>
 
-        {/* Table/Grid Container - Scrollable */}
-        <div className="flex-1 overflow-auto">
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto">
           {viewMode === 'list' ? (
             // List View (Table)
-            <table className="w-full">
-              <thead className="bg-gray-50 sticky top-0 z-10">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50 sticky top-0">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button 
@@ -332,16 +348,22 @@ const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg }) => {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <button 
-                          onClick={() => handleDelete(user.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(user.id);
+                          }}
                           className="text-gray-400 hover:text-red-600 transition-colors"
-                          title="Delete user"
+                          title="Delete organization"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => handleEdit(user)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(user);
+                          }}
                           className="text-gray-400 hover:text-blue-600 transition-colors"
-                          title="Edit user"
+                          title="Edit organization"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
@@ -421,7 +443,7 @@ const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg }) => {
                         handleDelete(user.id);
                       }}
                       className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                      title="Delete user"
+                      title="Delete organization"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -431,7 +453,7 @@ const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg }) => {
                         handleEdit(user);
                       }}
                       className="text-gray-400 hover:text-blue-600 transition-colors p-1"
-                      title="Edit user"
+                      title="Edit organization"
                     >
                       <Edit className="w-4 h-4" />
                     </button>

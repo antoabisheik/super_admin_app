@@ -28,7 +28,7 @@ function SignInForm() {
         if (result?.user) {
           const idToken = await result.user.getIdToken();
 
-          const res = await fetch('http://localhost:5000/auth/google-login', {
+          const res = await fetch('http://localhost:5000/api/Sauth/google-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -68,7 +68,7 @@ function SignInForm() {
 
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/auth/login', {
+      const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -108,7 +108,7 @@ function SignInForm() {
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
 
-      const res = await fetch('http://localhost:5000/auth/google-login', {
+      const res = await fetch('http://localhost:5000/api/auth/google-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
