@@ -12,7 +12,6 @@ import {
   VolumeX 
 } from 'lucide-react';
 
-// Simplified Camera interface for the viewer
 interface CameraViewerData {
   id: string | number;
   name: string;
@@ -20,7 +19,7 @@ interface CameraViewerData {
   status: 'online' | 'offline' | 'recording' | 'maintenance' | 'error' | 'live';
   stream_url?: string | null;
   ip_address?: string;
-  direct_stream_url?: string; // NEW: For MJPEG streaming
+  direct_stream_url?: string; 
 }
 
 interface CameraViewerProps {
@@ -29,7 +28,7 @@ interface CameraViewerProps {
   onSnapshot: () => void;
   onRecord: () => void;
   onRestart: () => void;
-  useDirectStream?: boolean; // NEW: Toggle between HLS and MJPEG
+  useDirectStream?: boolean; 
 }
 
 export default function CameraViewer({
@@ -38,7 +37,7 @@ export default function CameraViewer({
   onSnapshot,
   onRecord,
   onRestart,
-  useDirectStream = true, // Default to direct MJPEG streaming
+  useDirectStream = true, 
 }: CameraViewerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -82,7 +81,6 @@ export default function CameraViewer({
     img.src = streamUrl;
   }, [camera.direct_stream_url]);
 
-  // Original HLS stream initialization
   const initializeHLSStream = useCallback(() => {
     if (!videoRef.current || !camera.stream_url) return;
 
@@ -158,7 +156,6 @@ export default function CameraViewer({
   }, [camera.stream_url]);
 
   useEffect(() => {
-    // Decide which stream to use
     if (useDirectStream && camera.direct_stream_url) {
       initializeMJPEGStream();
     } else if (camera.stream_url) {
@@ -252,14 +249,14 @@ export default function CameraViewer({
       {/* Video/Image Element */}
       {camera.status !== 'offline' && (useDirectStream ? camera.direct_stream_url : camera.stream_url) ? (
         useDirectStream && camera.direct_stream_url ? (
-          // MJPEG Stream using img tag
+
           <img
             ref={imgRef}
             className="w-full h-full object-contain"
             alt={camera.name}
           />
         ) : (
-          // HLS Stream using video tag
+
           <video
             ref={videoRef}
             className="w-full h-full object-contain"

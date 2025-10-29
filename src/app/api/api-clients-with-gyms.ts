@@ -1,5 +1,5 @@
 import { auth } from '../api/firebase';
-
+import { User } from "firebase/auth"; // 👈 add this import
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 // ============================================================================
@@ -75,12 +75,21 @@ interface Gym {
  * Get Firebase auth token for API requests
  */
 async function getAuthToken(): Promise<string> {
-  const currentUser = auth.currentUser;
+  // Wait until Firebase finishes initializing auth state
+  const currentUser = await new Promise<User | null>((resolve) => {
+    const unsub = auth.onAuthStateChanged((user) => {
+      unsub();
+      resolve(user);
+    });
+  });
+
   if (!currentUser) {
-    throw new Error('User not authenticated');
+    throw new Error("User not authenticated");
   }
+
   return await currentUser.getIdToken();
 }
+
 
 /**
  * Make an authenticated API request

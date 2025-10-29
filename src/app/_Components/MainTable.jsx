@@ -37,26 +37,30 @@ const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg, onEdit, data = 
 
   const createSlug = (name) => {
     return name
-      .toLowerCase()
       .replace(/[^a-z0-9 -]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .trim();
   };
 
-  const handleRowClick = (organization, event) => {
-    if (event.target.closest('button')) {
-      return;
-    }
-    
-    const slug = createSlug(organization.id);
-    const orgWithSlug = { ...organization, slug };
-    if (onNavigateToOrg) {
-      onNavigateToOrg(orgWithSlug);
-    }
-    router.push(`/organizations/${slug}`);
-    console.log(`Navigating to: /organizations/${slug}`);
-  };
+ const handleRowClick = (organization, event) => {
+  if (event.target.closest('button')) {
+    return;
+  }
+
+  //use the Firestore ID exactly as-is
+  const orgId = organization.id;
+  
+  // Optionally add a name-based slug just for readability (not used for lookup)
+  const nameSlug = organization.name
+    ? organization.name.toLowerCase().replace(/\s+/g, '-')
+    : '';
+
+  // Route using both ID and slug
+  router.push(`/organizations/${orgId}`);
+  
+  console.log(`Navigating to: /organizations/${orgId}${nameSlug ? `-${nameSlug}` : ''}`);
+};
 
   // UPDATED: Pass full organization data to parent's edit handler
   const handleEdit = (organization) => {

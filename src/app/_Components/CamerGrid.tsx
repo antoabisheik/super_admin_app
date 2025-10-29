@@ -9,7 +9,7 @@ interface CameraGridProps {
   layout?: '1x1' | '2x2' | '3x3' | '4x4';
   organizationId?: number | null;
   gymId?: number | null;
-  useDirectStream?: boolean; // NEW: Toggle between direct MJPEG and HLS
+  useDirectStream?: boolean; 
 }
 
 export default function CameraGrid({ 
@@ -25,7 +25,7 @@ export default function CameraGrid({
 
   useEffect(() => {
     fetchCameras();
-    const interval = setInterval(fetchCameras, 10000); // Refresh every 10 seconds
+    const interval = setInterval(fetchCameras, 10000); 
     return () => clearInterval(interval);
   }, [organizationId, gymId]);
 
@@ -35,10 +35,9 @@ export default function CameraGrid({
       let response;
       
       if (useDirectStream) {
-        // NEW: Use direct camera streaming API
+
         response = await cameraAPI.getLiveCameras('192.168.0.');
         
-        // Transform the response to match Camera interface
         const liveCameras = response.data.cameras.map((cam: any) => ({
           id: cam.id,
           name: cam.name,
@@ -64,7 +63,6 @@ export default function CameraGrid({
         
         setCameras(liveCameras);
       } else {
-        // Use the existing database-backed API with HLS
         if (gymId) {
           response = await cameraAPI.getGridStatus(gymId, null);
         } else if (organizationId) {
@@ -97,11 +95,9 @@ export default function CameraGrid({
   const handleStartStream = async (cameraId: number) => {
     try {
       if (useDirectStream) {
-        // Direct streaming doesn't need to "start" - it's always live
         console.log('Direct streaming - always live');
         await fetchCameras(); // Just refresh
       } else {
-        // Legacy HLS streaming
         await cameraAPI.startStream(cameraId);
         await fetchCameras();
       }
@@ -113,7 +109,7 @@ export default function CameraGrid({
   const handleStopStream = async (cameraId: number) => {
     try {
       if (useDirectStream) {
-        // Direct streaming can't be "stopped" from frontend
+        // Direct streaming can't be "stopped" frontend
         console.log('Direct streaming - cannot stop from frontend');
       } else {
         // Legacy HLS streaming

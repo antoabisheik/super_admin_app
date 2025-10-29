@@ -79,16 +79,16 @@ const LicenseManagement = ({ organizations = [], db, isLoadingOrgs = false }) =>
         
         setLicenses(licensesData);
         setIsLoadingLicenses(false);
-        console.log('✅ Licenses loaded:', licensesData.length);
+        console.log('Licenses loaded:', licensesData.length);
       }, 
       (error) => {
-        console.error("❌ Error loading licenses:", error);
+        console.error("Error loading licenses:", error);
         setIsLoadingLicenses(false);
       }
     );
 
     return () => {
-      console.log('🧹 Cleaning up licenses listener');
+      console.log('Cleaning up licenses listener');
       unsubscribe();
     };
   }, [db]); // Only depend on db
@@ -155,10 +155,10 @@ const LicenseManagement = ({ organizations = [], db, isLoadingOrgs = false }) =>
       };
       
       await addDoc(collection(db, "licenses"), firestoreLicenseData);
-      console.log('✅ License created successfully');
+      console.log('License created successfully');
       setIsModalOpen(false);
     } catch (error) {
-      console.error("❌ Error creating license:", error);
+      console.error("Error creating license:", error);
       alert("Failed to create license. Please try again.");
     }
   };
@@ -174,10 +174,10 @@ const LicenseManagement = ({ organizations = [], db, isLoadingOrgs = false }) =>
       const licenseRef = doc(db, "licenses", licenseData.id);
       await updateDoc(licenseRef, dataToUpdate);
       
-      console.log('✅ License updated successfully');
+      console.log('License updated successfully');
       setIsModalOpen(false);
     } catch (error) {
-      console.error("❌ Error updating license:", error);
+      console.error("Error updating license:", error);
       alert("Failed to update license. Please try again.");
     }
   };
@@ -186,9 +186,9 @@ const LicenseManagement = ({ organizations = [], db, isLoadingOrgs = false }) =>
     if (window.confirm('Are you sure you want to delete this license?')) {
       try {
         await deleteDoc(doc(db, "licenses", licenseId));
-        console.log('✅ License deleted successfully');
+        console.log('License deleted successfully');
       } catch (error) {
-        console.error("❌ Error deleting license:", error);
+        console.error("rror deleting license:", error);
         alert("Failed to delete license. Please try again.");
       }
     }
