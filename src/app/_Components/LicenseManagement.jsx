@@ -1,17 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  collection, 
-  doc, 
-  updateDoc, 
-  deleteDoc, 
-  onSnapshot,
-  query,
-  orderBy,
-  addDoc,
-  serverTimestamp
-} from "firebase/firestore";
+import { auth } from '../api/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import licensesApi from '../api/licenses-api';
 
-const LicenseManagement = ({ organizations = [], db, isLoadingOrgs = false }) => {
+const LicenseManagement = ({ organizations = [], isLoadingOrgs = false }) => {
+  const [user, setUser] = useState(null);
   const [licenses, setLicenses] = useState([]);
   const [isLoadingLicenses, setIsLoadingLicenses] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,48 +45,49 @@ const LicenseManagement = ({ organizations = [], db, isLoadingOrgs = false }) =>
     }
   };
 
-  // Load licenses from Firestore - ONLY when db is available
+  // 🔹 Listen for Firebase auth state
   useEffect(() => {
-    if (!db) {
-      console.log('Database not available yet, waiting...');
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser || null);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // ✅ Fetch licenses via middleware
+  const fetchLicenses = async () => {
+    if (!user) {
+      console.log('User not authenticated, skipping license fetch');
       return;
     }
 
-    console.log('Setting up licenses listener...');
     setIsLoadingLicenses(true);
-
-    const licensesQuery = query(
-      collection(db, "licenses"), 
-      orderBy("createdAt", "desc")
-    );
-    
-    const unsubscribe = onSnapshot(licensesQuery, 
-      (querySnapshot) => {
-        const licensesData = [];
-        querySnapshot.forEach((doc) => {
-          licensesData.push({
-            id: doc.id,
-            ...doc.data()
-          });
-        });
-        
-        setLicenses(licensesData);
-        setIsLoadingLicenses(false);
-        console.log('Licenses loaded:', licensesData.length);
-      }, 
-      (error) => {
-        console.error("Error loading licenses:", error);
-        setIsLoadingLicenses(false);
+    try {
+      console.log('📍 Fetching licenses via middleware...');
+      const result = await licensesApi.getAll();
+      
+      if (result.success) {
+        setLicenses(result.data || []);
+        console.log('✅ Licenses loaded:', result.data.length);
+      } else {
+        console.error('❌ Error fetching licenses:', result.error);
+        setLicenses([]);
       }
-    );
+    } catch (error) {
+      console.error('❌ Error fetching licenses:', error);
+      setLicenses([]);
+    } finally {
+      setIsLoadingLicenses(false);
+    }
+  };
 
-    return () => {
-      console.log('Cleaning up licenses listener');
-      unsubscribe();
-    };
-  }, [db]); // Only depend on db
+  // Fetch licenses when user is authenticated
+  useEffect(() => {
+    if (user) {
+      fetchLicenses();
+    }
+  }, [user]);
 
-  // Memoize license status calculation to prevent unnecessary recalculations
+  // Memoize license status calculation
   const getLicenseStatus = useMemo(() => {
     return (license) => {
       if (!license.expiryDate) return 'active';
@@ -108,7 +102,7 @@ const LicenseManagement = ({ organizations = [], db, isLoadingOrgs = false }) =>
     };
   }, []);
 
-  // Memoize filtered licenses to prevent unnecessary filtering
+  // Memoize filtered licenses
   const filteredLicenses = useMemo(() => {
     return licenses.filter(license => {
       const matchesSearch = license.organizationName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -122,7 +116,7 @@ const LicenseManagement = ({ organizations = [], db, isLoadingOrgs = false }) =>
     });
   }, [licenses, searchTerm, filterStatus, filterPlan, getLicenseStatus]);
 
-  // Memoize statistics to prevent unnecessary recalculations
+  // Memoize statistics
   const stats = useMemo(() => {
     const stats = {
       total: licenses.length,
@@ -144,70 +138,67 @@ const LicenseManagement = ({ organizations = [], db, isLoadingOrgs = false }) =>
     return stats;
   }, [licenses, getLicenseStatus, licensePlans]);
 
-  // CRUD Operations - optimized
+  // ✅ Create license via middleware
   const handleCreateLicense = async (licenseData) => {
     try {
-      const firestoreLicenseData = {
-        ...licenseData,
-        licenseKey: generateLicenseKey(),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
+      console.log('💾 Creating license via middleware...');
+      const result = await licensesApi.create(licenseData);
       
-      await addDoc(collection(db, "licenses"), firestoreLicenseData);
-      console.log('License created successfully');
-      setIsModalOpen(false);
+      if (result.success) {
+        console.log('✅ License created successfully');
+        setIsModalOpen(false);
+        await fetchLicenses(); // Refresh the list
+      } else {
+        console.error('❌ Create failed:', result.error);
+        alert('Error creating license: ' + result.error);
+      }
     } catch (error) {
-      console.error("Error creating license:", error);
+      console.error("❌ Error creating license:", error);
       alert("Failed to create license. Please try again.");
     }
   };
 
+  // ✅ Update license via middleware
   const handleUpdateLicense = async (licenseData) => {
     try {
-      const updatedData = {
-        ...licenseData,
-        updatedAt: serverTimestamp()
-      };
+      console.log('📝 Updating license via middleware...');
+      const result = await licensesApi.update(licenseData.id, licenseData);
       
-      const { id, ...dataToUpdate } = updatedData;
-      const licenseRef = doc(db, "licenses", licenseData.id);
-      await updateDoc(licenseRef, dataToUpdate);
-      
-      console.log('License updated successfully');
-      setIsModalOpen(false);
+      if (result.success) {
+        console.log('✅ License updated successfully');
+        setIsModalOpen(false);
+        await fetchLicenses(); // Refresh the list
+      } else {
+        console.error('❌ Update failed:', result.error);
+        alert('Error updating license: ' + result.error);
+      }
     } catch (error) {
-      console.error("Error updating license:", error);
+      console.error("❌ Error updating license:", error);
       alert("Failed to update license. Please try again.");
     }
   };
 
+  // ✅ Delete license via middleware
   const handleDeleteLicense = async (licenseId) => {
-    if (window.confirm('Are you sure you want to delete this license?')) {
-      try {
-        await deleteDoc(doc(db, "licenses", licenseId));
-        console.log('License deleted successfully');
-      } catch (error) {
-        console.error("rror deleting license:", error);
-        alert("Failed to delete license. Please try again.");
-      }
+    if (!window.confirm('Are you sure you want to delete this license?')) {
+      return;
     }
-  };
 
-  // Generate license key
-  const generateLicenseKey = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const segments = 4;
-    const segmentLength = 4;
-    
-    let licenseKey = '';
-    for (let i = 0; i < segments; i++) {
-      if (i > 0) licenseKey += '-';
-      for (let j = 0; j < segmentLength; j++) {
-        licenseKey += chars.charAt(Math.floor(Math.random() * chars.length));
+    try {
+      console.log('🗑️ Deleting license via middleware...');
+      const result = await licensesApi.delete(licenseId);
+      
+      if (result.success) {
+        console.log('✅ License deleted successfully');
+        await fetchLicenses(); // Refresh the list
+      } else {
+        console.error('❌ Delete failed:', result.error);
+        alert('Error deleting license: ' + result.error);
       }
+    } catch (error) {
+      console.error("❌ Error deleting license:", error);
+      alert("Failed to delete license. Please try again.");
     }
-    return licenseKey;
   };
 
   // Modal handlers
@@ -247,12 +238,22 @@ const LicenseManagement = ({ organizations = [], db, isLoadingOrgs = false }) =>
   };
 
   // Show loading state
+  if (!user) {
+    return (
+      <div className="p-6">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-yellow-800">Please log in to access license management.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoadingOrgs) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-[#d1f5ec] text-white ">Loading organizations...</span>
+          <span className="ml-2 text-gray-600">Loading organizations...</span>
         </div>
       </div>
     );
@@ -279,12 +280,6 @@ const LicenseManagement = ({ organizations = [], db, isLoadingOrgs = false }) =>
             <h3 className="text-lg font-medium">No Organizations Found</h3>
             <p className="text-sm">You need to create organizations first before managing licenses.</p>
           </div>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Refresh Page
-          </button>
         </div>
       </div>
     );
@@ -478,7 +473,7 @@ const LicenseManagement = ({ organizations = [], db, isLoadingOrgs = false }) =>
   );
 };
 
-// Optimized License Modal Component
+// License Modal Component (keep the same as before)
 const LicenseModal = ({ isOpen, onClose, onSave, initialData, organizations, licensePlans }) => {
   const [formData, setFormData] = useState({
     organizationId: '',
@@ -490,12 +485,10 @@ const LicenseModal = ({ isOpen, onClose, onSave, initialData, organizations, lic
     notes: ''
   });
 
-  // Only update form data when initialData changes
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
     } else {
-      // Set default expiry date to 1 year from now
       const defaultExpiry = new Date();
       defaultExpiry.setFullYear(defaultExpiry.getFullYear() + 1);
       
@@ -514,7 +507,6 @@ const LicenseModal = ({ isOpen, onClose, onSave, initialData, organizations, lic
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Validate required fields
     if (!formData.organizationId || !formData.contactEmail) {
       alert('Please fill in all required fields.');
       return;
