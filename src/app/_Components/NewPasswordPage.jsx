@@ -1,60 +1,64 @@
 'use client';
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowBigLeft } from 'lucide-react';
-import LoadingOverlay from './LoadingOverlay';
+import LoadingOverlay from './LoadingOverlay'; 
 
-const NewPasswordPage = ({ oobCode }) => {
+const NewPasswordPage = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); 
 
+  const params = useSearchParams();
   const router = useRouter();
+  const oobCode = params.get('oobCode');
 
-  const handleSubmit = async () => {
-    if (!oobCode) {
-      setError('Invalid or missing reset code.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
-      return;
-    }
+ const handleSubmit = async () => {
+  if (!oobCode) {
+    setError("Invalid or missing reset code.");
+    return;
+  }
+  if (password !== confirmPassword) {
+    setError("Passwords do not match.");
+    return;
+  }
+  if (password.length < 6) {
+    setError("Password must be at least 6 characters long.");
+    return;
+  }
 
-    setLoading(true);
-    setError('');
-    setMessage('');
+  setLoading(true);
+  setError("");
+  setMessage("");
 
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/confirm-reset`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ oobCode, newPassword: password }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to reset password.');
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/auth/confirm-reset`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ oobCode, newPassword: password }),
       }
+    );
 
-      setMessage('Password updated successfully!');
-      setTimeout(() => router.push('/conf-pag'), 2000);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to reset password.");
     }
-  };
+
+    setMessage("Password updated successfully!");
+    setTimeout(() => router.push("/conf-pag"), 2000);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-[url('')] flex items-center justify-center px-4 bg-gradient-to-br from-green-950 to-black text-white relative">
@@ -66,6 +70,7 @@ const NewPasswordPage = ({ oobCode }) => {
         </span>
       </div>
 
+      {/* Form Section */}
       <div className="max-w-sm w-full">
         <h2 className="text-2xl font-bold text-[#A4FEB7] mb-2">
           Set a new password
