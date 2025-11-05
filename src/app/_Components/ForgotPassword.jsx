@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../api/firebase';
 import LoadingOverlay from './LoadingOverlay'; 
 
 const RequestResetPage = () => {
@@ -11,25 +9,70 @@ const RequestResetPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false); 
 
+  // Update this to match your backend URL and port
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
   const handleResetRequest = async () => {
+    // Validate email
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
     setLoading(true); 
+    setError('');
+    setMessage('');
+
     try {
-      await sendPasswordResetEmail(auth, email, {
-        url: 'http://localhost:3000/auth-verf',
-        handleCodeInApp: true,
+      // Call your backend API endpoint for password reset
+      // Adjust the path to match your backend route structure
+      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include cookies for session management
+        body: JSON.stringify({ 
+          email,
+          resetUrl: 'http://localhost:3000/auth-verf' // Your frontend reset page URL
+        }),
       });
-      setMessage('Password reset email sent! Check your inbox.');
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Failed to send reset email');
+      }
+
+      setMessage(data.message || 'Password reset email sent! Check your inbox.');
       setError('');
+      
+      // Clear email field after successful request
+      setEmail('');
     } catch (err) {
-      setError(err.message);
+      console.error('Password reset error:', err);
+      setError(err.message || 'Failed to send password reset email. Please try again.');
       setMessage('');
     } finally {
       setLoading(false); 
     }
   };
 
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleResetRequest();
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[url('')] flex flex-row items-start  text-white relative">
+    <div className="min-h-screen bg-[url('')] flex flex-row items-start text-white relative">
       {loading && <LoadingOverlay />}
       <div className="p-5 rounded-lg my-20 mx-20 w-full max-w-md">
         <h2 className="text-2xl font-bold mb-1 text-green-300">Reset Password</h2>
@@ -43,7 +86,9 @@ const RequestResetPage = () => {
           placeholder="Enter your email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onKeyPress={handleKeyPress}
           className="w-full p-2 mb-4 ring-1 ring-white rounded-2xl bg-gray-700 text-white focus:outline-none"
+          disabled={loading}
         />
 
         {error && <p className="text-red-400 mb-2 text-sm">{error}</p>}
@@ -51,9 +96,10 @@ const RequestResetPage = () => {
 
         <button
           onClick={handleResetRequest}
-          className="w-full bg-green-400 text-black py-2 rounded-2xl hover:bg-green-300 transition"
+          disabled={loading}
+          className="w-full bg-green-400 text-black py-2 rounded-2xl hover:bg-green-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Send Reset Email
+          {loading ? 'Sending...' : 'Send Reset Email'}
         </button>
       </div>
     </div>

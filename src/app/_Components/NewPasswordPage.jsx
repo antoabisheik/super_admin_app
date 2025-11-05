@@ -1,49 +1,64 @@
 'use client';
-
 import React, { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowBigLeft } from 'lucide-react';
-import { confirmPasswordReset } from 'firebase/auth';
-import { auth } from '../api/firebase';
-import LoadingOverlay from './LoadingOverlay'; // ✅ Import
+import LoadingOverlay from './LoadingOverlay'; 
 
 const NewPasswordPage = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false); // ✅ loading state
+  const [loading, setLoading] = useState(false); 
 
   const params = useSearchParams();
   const router = useRouter();
   const oobCode = params.get('oobCode');
 
-  const handleSubmit = async () => {
-    if (!oobCode) {
-      setError('Invalid or missing reset code.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
-      return;
+ const handleSubmit = async () => {
+  if (!oobCode) {
+    setError("Invalid or missing reset code.");
+    return;
+  }
+  if (password !== confirmPassword) {
+    setError("Passwords do not match.");
+    return;
+  }
+  if (password.length < 6) {
+    setError("Password must be at least 6 characters long.");
+    return;
+  }
+
+  setLoading(true);
+  setError("");
+  setMessage("");
+
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/auth/confirm-reset`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ oobCode, newPassword: password }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to reset password.");
     }
 
-    setLoading(true);
-    try {
-      await confirmPasswordReset(auth, oobCode, password);
-      setMessage('Password updated successfully!');
-      setError('');
-      setTimeout(() => router.push('/conf-pag'), 2000);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setMessage("Password updated successfully!");
+    setTimeout(() => router.push("/conf-pag"), 2000);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-[url('')] flex items-center justify-center px-4 bg-gradient-to-br from-green-950 to-black text-white relative">
