@@ -1,7 +1,7 @@
 // app/api/api.ts
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.0.102:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://webapps-middleware.onrender.com';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
