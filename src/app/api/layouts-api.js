@@ -1,7 +1,7 @@
 // api/layouts-api.js
 import { auth } from './firebase';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://webapps-middleware.onrender.com/api';
 
 // Helper to get auth token
 const getAuthToken = async () => {

@@ -1,6 +1,6 @@
 // lib/api-client.ts (in your Next.js app)
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://webapps-middleware.onrender.com/api';
 
 /**
  * Get auth token from Firebase
