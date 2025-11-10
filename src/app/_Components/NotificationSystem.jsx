@@ -46,13 +46,13 @@ const NotificationSystem = () => {
     return () => unsubscribe();
   }, []);
 
-  // ✅ Fetch all data via middleware
+  // Fetch all data via middleware
   const fetchAllData = async () => {
     if (!user) return;
 
     setIsLoading(true);
     try {
-      console.log('📍 Fetching notification data via middleware...');
+      console.log('Fetching notification data via middleware...');
 
       // Fetch configs
       const configResult = await notificationsApi.config.getAll();
@@ -86,9 +86,9 @@ const NotificationSystem = () => {
         setRecipientGroups(statsResult.data || []);
       }
 
-      console.log('✅ All notification data loaded');
+      console.log('All notification data loaded');
     } catch (error) {
-      console.error('❌ Error fetching notification data:', error);
+      console.error('Error fetching notification data:', error);
       toast.error('Failed to load notification data');
     } finally {
       setIsLoading(false);
@@ -101,7 +101,7 @@ const NotificationSystem = () => {
     }
   }, [user]);
 
-  // ✅ Send notification via middleware
+  // Send notification via middleware
   const handleSendNotification = async () => {
     if (!subject) {
       toast.error('Please enter a subject');
@@ -158,7 +158,7 @@ const NotificationSystem = () => {
     }
   };
 
-  // ✅ Save template via middleware
+  //  Save template via middleware
   const handleSaveTemplate = async () => {
     if (!templateName || !templateCategory || !templateContent) {
       toast.error('Please fill all template fields');
@@ -188,7 +188,7 @@ const NotificationSystem = () => {
     }
   };
 
-  // ✅ Delete template via middleware
+  //  Delete template via middleware
   const handleDeleteTemplate = async (templateId) => {
     if (!window.confirm('Delete this template?')) return;
 
@@ -207,7 +207,7 @@ const NotificationSystem = () => {
     }
   };
 
-  // ✅ Delete scheduled notification via middleware
+  //  Delete scheduled notification via middleware
   const handleDeleteScheduled = async (id) => {
     if (!window.confirm('Delete this scheduled notification?')) return;
 
