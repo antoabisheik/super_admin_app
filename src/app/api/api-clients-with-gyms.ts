@@ -1,5 +1,5 @@
 import { auth } from '../api/firebase';
-import { User } from "firebase/auth"; // 👈 add this import
+import { User } from "firebase/auth"; //  add this import
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://webapps-middleware.onrender.com/api';
 
 
