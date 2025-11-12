@@ -18,6 +18,68 @@ const Hardware = ({
   const [editingDevice, setEditingDevice] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [user, setUser] = useState(null);
+  const [deviceStatuses, setDeviceStatuses] = useState({});
+  const [statusesLoading, setStatusesLoading] = useState(false);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+  const getBatteryColor = (percent) => {
+    if (percent == null) return "text-gray-400";
+    if (percent >= 80) return "text-green-600";
+    if (percent >= 40) return "text-yellow-500";
+    return "text-red-600";
+  };
+
+  useEffect(() => {
+    if (!devices || devices.length === 0) {
+      setDeviceStatuses({});
+      return;
+    }
+
+    let mounted = true;
+    const fetchAllStatuses = async () => {
+      setStatusesLoading(true);
+      try {
+        // Parallel requests (faster than sequential)
+        const promises = devices.map(async (device) => {
+          if (!device.macAddress) return null;
+          try {
+            const res = await fetch(`${API_URL}/devices/${encodeURIComponent(device.macAddress)}/status`);
+            if (!res.ok) return null;
+            const json = await res.json();
+            if (json?.success && json.data) return { mac: device.macAddress, data: json.data };
+            return null;
+          } catch (err) {
+            console.warn("Fetch status failed for", device.macAddress, err);
+            return null;
+          }
+        });
+
+        const results = await Promise.all(promises);
+        if (!mounted) return;
+
+        const next = { ...(deviceStatuses || {}) }; // keep previous keys not present
+        for (const r of results) {
+          if (r && r.mac) next[r.mac] = r.data;
+        }
+        setDeviceStatuses(next);
+      } catch (err) {
+        console.error("Error fetching statuses:", err);
+      } finally {
+        if (mounted) setStatusesLoading(false);
+      }
+    };
+
+    // initial fetch + polling
+    fetchAllStatuses();
+    const interval = setInterval(fetchAllStatuses, 15000); // 15s
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [devices]); // re-run whenever devices list changes
+
+
 
   const [formData, setFormData] = useState({
     deviceId: "",
@@ -27,20 +89,20 @@ const Hardware = ({
     organizationId: null,
     organizationName: "",
     gym: "",
-    gymId: null, // ✅ Firestore document ID
-    gymUniqueId: "", // ✅ Custom gym ID (e.g., "VIJ-GYM-001")
+    gymId: null, // Firestore document ID
+    gymUniqueId: "", // Custom gym ID (e.g., "VIJ-GYM-001")
     gymName: "",
     ipAddress: "",
     modelNo: "",
     macAddress: "",
   });
 
-  // 🔹 Keep 'type' in sync with tab
+  // Keep 'type' in sync with tab
   useEffect(() => {
     setFormData((prev) => ({ ...prev, type: activeHardwareTab.toLowerCase() }));
   }, [activeHardwareTab]);
 
-  // 🔹 Listen for Firebase auth state
+  // Listen for Firebase auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser || null);
@@ -48,7 +110,7 @@ const Hardware = ({
     return () => unsubscribe();
   }, []);
 
-  // 🔹 Fetch gyms for selected organization
+  // Fetch gyms for selected organization
   const fetchGymsForOrganization = async (organizationId) => {
     if (!organizationId) {
       setAvailableGyms([]);
@@ -72,7 +134,7 @@ const Hardware = ({
     }
   };
 
-  // 🔹 Auto-fetch gyms when org changes
+  // Auto-fetch gyms when org changes
   useEffect(() => {
     if (formData.organizationId) {
       fetchGymsForOrganization(formData.organizationId);
@@ -81,13 +143,13 @@ const Hardware = ({
     }
   }, [formData.organizationId]);
 
-  // 🔹 Load all devices
+  // Load all devices
   const loadDevices = async () => {
     if (!user) return;
     try {
       const res = await devicesApi.getAll(null);
       if (res.success && Array.isArray(res.data)) {
-        console.log("📦 Loaded devices:", res.data);
+        console.log("Loaded devices:", res.data);
         setDevices(res.data);
       } else {
         console.error("Error loading devices:", res.error);
@@ -99,14 +161,15 @@ const Hardware = ({
     }
   };
 
+
   useEffect(() => {
     if (user) loadDevices();
   }, [user]);
 
-  // 🔹 Handle input changes
+  // Handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     if (name === "organization") {
       if (value === "Unassigned") {
         setFormData((p) => ({
@@ -135,7 +198,7 @@ const Hardware = ({
     } else if (name === "gym") {
       const selectedGym = availableGyms.find((g) => g.name === value);
       console.log("🏋️ Selected gym:", selectedGym);
-      
+
       setFormData((p) => ({
         ...p,
         gym: selectedGym?.name || "",
@@ -159,7 +222,7 @@ const Hardware = ({
     setIsSubmitting(true);
     try {
       const orgId = formData.organizationId;
-      
+
       //Determine status based on assignment
       let deviceStatus = "Inventory"; // Default: in inventory
       if (orgId && formData.gymId) {
@@ -175,20 +238,20 @@ const Hardware = ({
         serialNumber: formData.serialNumber.trim(),
         model: formData.modelNo.trim() || "",
         manufacturer: "N/A",
-        
+
         // ✅ Organization tracking
         organizationId: orgId || null,
         organizationName: formData.organizationName || "Unassigned",
-        
+
         // ✅ Gym tracking with BOTH IDs
         gymId: formData.gymId || null, // Firestore document ID
         gymUniqueId: formData.gymUniqueId || null, // Custom ID (VIJ-GYM-001)
         gymName: formData.gymName || "",
         location: formData.gymName || "", // For backward compatibility
-        
+
         // ✅ Status tracking
         status: deviceStatus,
-        
+
         // Additional fields
         ipAddress: formData.ipAddress.trim() || "",
         macAddress: formData.macAddress.trim() || "",
@@ -306,11 +369,10 @@ const Hardware = ({
             <button
               key={tab}
               onClick={() => setActiveHardwareTab(tab)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                activeHardwareTab === tab
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeHardwareTab === tab
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
             >
               {tab}s
             </button>
@@ -365,6 +427,7 @@ const Hardware = ({
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Gym</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Gym ID</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Status</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Battery</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Model</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Actions</th>
             </tr>
@@ -387,6 +450,32 @@ const Hardware = ({
                     {d.status}
                   </span>
                 </td>
+                <td className="px-4 py-3">
+                  {deviceStatuses[d.macAddress] ? (
+                    <div className="flex items-center gap-2">
+                      {/* progress bar */}
+                      <div className="w-20 bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div
+                          className={`h-2 rounded-full ${getBatteryColor(deviceStatuses[d.macAddress].battery_percent)}`}
+                          style={{ width: `${Math.max(0, Math.min(100, deviceStatuses[d.macAddress].battery_percent || 0))}%` }}
+                        />
+                      </div>
+
+                      {/* percentage + voltage */}
+                      <div className="flex flex-col">
+                        <span className={`text-sm font-semibold ${getBatteryColor(deviceStatuses[d.macAddress].battery_percent)}`}>
+                          {deviceStatuses[d.macAddress].battery_percent ?? "—"}%
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {deviceStatuses[d.macAddress].battery_voltage ? `${deviceStatuses[d.macAddress].battery_voltage.toFixed(2)} V` : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-sm italic">—</span>
+                  )}
+                </td>
+
                 <td className="px-4 py-3">{d.model || "N/A"}</td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
@@ -414,9 +503,11 @@ const Hardware = ({
                 </td>
               </tr>
             )}
+
           </tbody>
         </table>
       </div>
+
 
       {/* ADD/EDIT MODAL */}
       {isModalOpen && (
@@ -426,11 +517,11 @@ const Hardware = ({
               <h2 className="text-lg font-semibold text-gray-900">
                 {editingDevice ? "Edit Device" : "Add New Device"}
               </h2>
-              <button 
+              <button
                 onClick={() => {
                   setIsModalOpen(false);
                   setEditingDevice(null);
-                }} 
+                }}
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
               >
                 ×
@@ -579,8 +670,8 @@ const Hardware = ({
                   {isSubmitting
                     ? "Saving..."
                     : editingDevice
-                    ? "Update Device"
-                    : "Add Device"}
+                      ? "Update Device"
+                      : "Add Device"}
                 </button>
               </div>
             </form>
