@@ -28,7 +28,7 @@ function SignInForm() {
         if (result?.user) {
           const idToken = await result.user.getIdToken();
 
-          const res = await fetch('http://localhost:5000/api/Sauth/google-login', {
+          const res = await fetch('https://webapps-middleware.onrender.com/api/Sauth/google-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
