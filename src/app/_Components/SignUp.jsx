@@ -30,7 +30,7 @@ const SignUpForm = () => {
         if (result) {
           const idToken = await result.user.getIdToken();
           
-          const res = await fetch("http://localhost:5000/api/auth/google-login", {
+          const res = await fetch("http://64.227.147.149/api/auth/google-login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -86,7 +86,7 @@ const SignUpForm = () => {
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/auth/signup", {
+      const res = await fetch("http://64.227.147.149/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -119,7 +119,7 @@ const SignUpForm = () => {
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
       
-      const res = await fetch("http://localhost:5000/api/SSauth/google-login", {
+      const res = await fetch("http://64.227.147.149/api/SSauth/google-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

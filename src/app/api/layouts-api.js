@@ -89,6 +89,30 @@ export const savedLayoutsApi = {
 // CUSTOM LAYOUTS API (Floor Plan Images)
 // ===================================================================
 
+export const devicesApi = {
+  // Get all devices for organization
+  getAll: async (organizationId, filters = {}) => {
+    const queryParams = new URLSearchParams();
+    
+    if (filters.gymId !== undefined) {
+      queryParams.append('gymId', filters.gymId);
+    }
+    if (filters.status) queryParams.append('status', filters.status);
+    if (filters.type) queryParams.append('type', filters.type);
+    if (filters.limit) queryParams.append('limit', filters.limit);
+    
+    const queryString = queryParams.toString();
+    const endpoint = `/organizations/${organizationId}/devices${queryString ? `?${queryString}` : ''}`;
+    
+    return apiCall(endpoint);
+  },
+
+  // Get single device
+  getById: async (organizationId, deviceId) => {
+    return apiCall(`/organizations/${organizationId}/devices/${deviceId}`);
+  },
+};
+
 export const customLayoutsApi = {
   // Get all custom layout images
   getAll: async (organizationId, gymId = null) => {
@@ -117,4 +141,5 @@ export const customLayoutsApi = {
 export const layoutsApi = {
   saved: savedLayoutsApi,
   custom: customLayoutsApi,
+  devices: devicesApi,
 };
