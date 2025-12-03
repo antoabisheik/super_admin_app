@@ -56,7 +56,7 @@ function Layouts() {
   const fetchOrganizations = async () => {
     setIsLoadingOrgs(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/organizations`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://sbackend.duckdns.org/api/api'}/organizations`, {
         headers: {
           'Authorization': `Bearer ${await getAuthToken()}`
         }
@@ -91,7 +91,7 @@ function Layouts() {
     
     setIsLoadingGyms(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/organizations/${organizationId}/gyms`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://sbackend.duckdns.org/api/api'}/organizations/${organizationId}/gyms`, {
         headers: {
           'Authorization': `Bearer ${await getAuthToken()}`
         }

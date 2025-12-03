@@ -53,7 +53,7 @@ const LicenseManagement = ({ organizations = [], isLoadingOrgs = false }) => {
     return () => unsubscribe();
   }, []);
 
-  // ✅ Fetch licenses via middleware
+  //  Fetch licenses via middleware
   const fetchLicenses = async () => {
     if (!user) {
       console.log('User not authenticated, skipping license fetch');
@@ -138,65 +138,65 @@ const LicenseManagement = ({ organizations = [], isLoadingOrgs = false }) => {
     return stats;
   }, [licenses, getLicenseStatus, licensePlans]);
 
-  // ✅ Create license via middleware
+  // Create license via middleware
   const handleCreateLicense = async (licenseData) => {
     try {
-      console.log('💾 Creating license via middleware...');
+      console.log(' Creating license via middleware...');
       const result = await licensesApi.create(licenseData);
       
       if (result.success) {
-        console.log('✅ License created successfully');
+        console.log(' License created successfully');
         setIsModalOpen(false);
         await fetchLicenses(); // Refresh the list
       } else {
-        console.error('❌ Create failed:', result.error);
+        console.error(' Create failed:', result.error);
         alert('Error creating license: ' + result.error);
       }
     } catch (error) {
-      console.error("❌ Error creating license:", error);
+      console.error(" Error creating license:", error);
       alert("Failed to create license. Please try again.");
     }
   };
 
-  // ✅ Update license via middleware
+  //  Update license via middleware
   const handleUpdateLicense = async (licenseData) => {
     try {
-      console.log('📝 Updating license via middleware...');
+      console.log(' Updating license via middleware...');
       const result = await licensesApi.update(licenseData.id, licenseData);
       
       if (result.success) {
-        console.log('✅ License updated successfully');
+        console.log(' License updated successfully');
         setIsModalOpen(false);
         await fetchLicenses(); // Refresh the list
       } else {
-        console.error('❌ Update failed:', result.error);
+        console.error('Update failed:', result.error);
         alert('Error updating license: ' + result.error);
       }
     } catch (error) {
-      console.error("❌ Error updating license:", error);
+      console.error(" Error updating license:", error);
       alert("Failed to update license. Please try again.");
     }
   };
 
-  // ✅ Delete license via middleware
+  // Delete license via middleware
   const handleDeleteLicense = async (licenseId) => {
     if (!window.confirm('Are you sure you want to delete this license?')) {
       return;
     }
 
     try {
-      console.log('🗑️ Deleting license via middleware...');
+      console.log('Deleting license via middleware...');
       const result = await licensesApi.delete(licenseId);
       
       if (result.success) {
-        console.log('✅ License deleted successfully');
+        console.log('License deleted successfully');
         await fetchLicenses(); // Refresh the list
       } else {
-        console.error('❌ Delete failed:', result.error);
+        console.error(' Delete failed:', result.error);
         alert('Error deleting license: ' + result.error);
       }
     } catch (error) {
-      console.error("❌ Error deleting license:", error);
+      console.error(" Error deleting license:", error);
       alert("Failed to delete license. Please try again.");
     }
   };
