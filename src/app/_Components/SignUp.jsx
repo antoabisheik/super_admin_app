@@ -64,7 +64,7 @@ const SignUpForm = () => {
       // Step 3: Save additional user data to your backend
       try {
         const idToken = await userCredential.user.getIdToken();
-        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://sbackend.duckdns.org/api';
 
         await fetch(`${API_BASE_URL}/auth/save-user-data`, {
           method: "POST",
@@ -132,7 +132,7 @@ const SignUpForm = () => {
       }
 
       toast.success("Signed in with Google!");
-      router.push('/my-gym');
+      router.push('/dashboard');
       
     } catch (err) {
       console.error("Google signup error:", err);
