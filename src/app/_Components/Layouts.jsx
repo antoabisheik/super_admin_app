@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { layoutsApi } from '../api/layouts-api';
+import { useAuth } from '../contexts/AuthContext';
 
 function Layouts() {
+  const { user } = useAuth(); // Get authenticated user from context
+
   // Selection states
   const [selectedOrganization, setSelectedOrganization] = useState(null);
   const [selectedGym, setSelectedGym] = useState(null);
@@ -216,8 +219,6 @@ const fetchDevices = async (organizationId, gymId = null) => {
 
   // Helper to get auth token
   const getAuthToken = async () => {
-    const { auth } = await import('../api/firebase');
-    const user = auth.currentUser;
     if (!user) throw new Error('User not authenticated');
     return await user.getIdToken();
   };
@@ -503,10 +504,14 @@ const fetchDevices = async (organizationId, gymId = null) => {
     }
   };
 
-  // UseEffects
+  // UseEffects - wait for user authentication before fetching data
   useEffect(() => {
+    if (!user) {
+      console.log('Waiting for user authentication before loading organizations');
+      return;
+    }
     fetchOrganizations();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (selectedOrganization) {

@@ -15,8 +15,11 @@ import { organizationsApi, devicesApi } from '../api/api-client';
 import LicenseManagement from './LicenseManagement'
 import CameraLayout from './CameraLayout';
 import NotificationSystem from './NotificationSystem';
+import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard = () => {
+  const { user } = useAuth(); // Get authenticated user from context
+
   // Active tab state for navigation
   const [activeTab, setActiveTab] = useState('Organization');
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,14 +36,19 @@ const Dashboard = () => {
   // Hardware devices state - managed via API
   const [devices, setDevices] = useState([]);
 
-  // Load organizations from API
+  // Load organizations from API - ONLY when user is authenticated
   useEffect(() => {
+    if (!user) {
+      console.log('Waiting for user authentication before loading organizations');
+      return;
+    }
+
     const loadOrganizations = async () => {
       try {
         setIsLoadingOrgs(true);
-        
+
         const result = await organizationsApi.getAll();
-        
+
         if (result.success && result.data) {
           setUsers(result.data);
           console.log('Organizations loaded from API:', result.data);
@@ -57,16 +65,21 @@ const Dashboard = () => {
     };
 
     loadOrganizations();
-  }, []);
+  }, [user]); // Re-run when user changes
 
-  // Load devices from API
+  // Load devices from API - ONLY when user is authenticated
   useEffect(() => {
+    if (!user) {
+      console.log('Waiting for user authentication before loading devices');
+      return;
+    }
+
     const loadDevices = async () => {
       try {
         setIsLoadingDevices(true);
-        
+
         const result = await devicesApi.getAll();
-        
+
         if (result.success && result.data) {
           setDevices(result.data);
           console.log('Devices loaded from API:', result.data);
@@ -83,7 +96,7 @@ const Dashboard = () => {
     };
 
     loadDevices();
-  }, []);
+  }, [user]); // Re-run when user changes
 
   // CRUD Operations for Organizations (using API)
   const handleCreateOrganization = async (organizationData) => {

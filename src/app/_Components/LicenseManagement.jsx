@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { auth } from '../api/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 import licensesApi from '../api/licenses-api';
+import { useAuth } from '../contexts/AuthContext';
 
 const LicenseManagement = ({ organizations = [], isLoadingOrgs = false }) => {
-  const [user, setUser] = useState(null);
+  const { user } = useAuth(); // Use AuthContext instead of local auth listener
   const [licenses, setLicenses] = useState([]);
   const [isLoadingLicenses, setIsLoadingLicenses] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,7 +22,7 @@ const LicenseManagement = ({ organizations = [], isLoadingOrgs = false }) => {
       color: 'bg-gray-500'
     },
     professional: {
-      name: 'Professional', 
+      name: 'Professional',
       price: 299,
       features: ['Up to 25 devices', 'Advanced analytics', 'Priority support', 'API access'],
       maxDevices: 25,
@@ -44,14 +43,6 @@ const LicenseManagement = ({ organizations = [], isLoadingOrgs = false }) => {
       color: 'bg-green-500'
     }
   };
-
-  // 🔹 Listen for Firebase auth state
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser || null);
-    });
-    return () => unsubscribe();
-  }, []);
 
   //  Fetch licenses via middleware
   const fetchLicenses = async () => {
