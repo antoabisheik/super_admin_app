@@ -4,7 +4,7 @@ import React from "react";
 
 const ConfirmPage = () => {
   return (
-    <div className="flex flex-start top-30  bg-[url('')] flex items-center justify-center px-8 sm:px-20 bg-gradient-to-r from-[#123425] to-[#0f1c1a] text-white relative">
+    <div className="flex flex-start top-30  flex items-center justify-center px-8 sm:px-20 bg-gradient-to-r from-[#123425] to-[#0f1c1a] text-white relative">
       
       <div className="max-w-md space-y-6">
        

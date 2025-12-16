@@ -3,7 +3,7 @@ import SignInForm from './SignIn'
 import Image from 'next/image'
 function Design() {
   return (
-    <div className="min-h-screen bg-[url('/img_back.png')] bg-cover bg-center flex flex-col justify-between px-6 py-4">
+    <div className="min-h-screen  bg-cover bg-center flex flex-col justify-between px-6 py-4">
       
       <div className="flex flex-row text-white text-2xl font-bold">
       <Image width={40} height={40} src="/logo.png" alt='logo' /> 

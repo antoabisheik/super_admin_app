@@ -61,7 +61,7 @@ const NewPasswordPage = () => {
 };
 
   return (
-    <div className="min-h-screen bg-[url('')] flex items-center justify-center px-4 bg-gradient-to-br from-green-950 to-black text-white relative">
+    <div className="min-h-screen  flex items-center justify-center px-4 bg-gradient-to-br from-green-950 to-black text-white relative">
       {loading && <LoadingOverlay />}
 
       <div className="absolute top-8 left-6 bg-white text-sm font-medium border rounded-4xl p-3 cursor-pointer">

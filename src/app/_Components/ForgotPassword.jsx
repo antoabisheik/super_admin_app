@@ -72,7 +72,7 @@ const RequestResetPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[url('')] flex flex-row items-start text-white relative">
+    <div className="min-h-screen flex flex-row items-start text-white relative">
       {loading && <LoadingOverlay />}
       <div className="p-5 rounded-lg my-20 mx-20 w-full max-w-md">
         <h2 className="text-2xl font-bold mb-1 text-green-300">Reset Password</h2>

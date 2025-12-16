@@ -43,7 +43,7 @@ const AuthCodePage = () => {
   };
 
   return (
-<div className="min-h-screen bg-[url('')] text-white flex items-start pt-26 mx-20 my-10 relative overflow-hidden">
+<div className="min-h-screen text-white flex items-start pt-26 mx-20 my-10 relative overflow-hidden">
       <div className="absolute top-2 left-0 bg-white text-sm font-medium border rounded-4xl p-3 cursor-pointer">
 <span className="text-green-600 text-2xl">
   <ArrowBigLeft />

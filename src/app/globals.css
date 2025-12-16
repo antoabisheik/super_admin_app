@@ -44,7 +44,8 @@
 }
 
 body {
-  background-image: url('');
+
+  background-image: url("/img_back.png");
 }
 
 :root {
