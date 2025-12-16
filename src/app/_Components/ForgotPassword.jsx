@@ -10,7 +10,7 @@ const RequestResetPage = () => {
   const [loading, setLoading] = useState(false); 
 
   // Update this to match your backend URL and port
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://sbackend.duckdns.org/api';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://sbackend.duckdns.org';
 
   const handleResetRequest = async () => {
     // Validate email
