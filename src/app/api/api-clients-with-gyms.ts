@@ -1,6 +1,6 @@
 import { auth } from '../api/firebase';
 import { User } from "firebase/auth"; //  add this import
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://webapps-middleware.onrender.com/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://sbackend.duckdns.org/api';
 
 
 interface ApiResponse<T = any> {

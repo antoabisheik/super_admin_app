@@ -1,7 +1,7 @@
 // api/layouts-api.js
 import { auth } from './firebase';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://webapps-middleware.onrender.com/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://sbackend.duckdns.org/api';
 
 // Helper to get auth token
 const getAuthToken = async () => {

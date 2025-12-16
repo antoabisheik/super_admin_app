@@ -23,7 +23,7 @@ const SignUpForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
  
-  // ✅ Use Firebase's built-in email verification
+  // Use Firebase's built-in email verification
   const handleSignUp = async (e) => {
     e.preventDefault();
     
