@@ -10,7 +10,7 @@ const RequestResetPage = () => {
   const [loading, setLoading] = useState(false); 
 
   // Update this to match your backend URL and port
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://sbackend.duckdns.org/api';
 
   const handleResetRequest = async () => {
     // Validate email
@@ -41,7 +41,7 @@ const RequestResetPage = () => {
         credentials: 'include', // Include cookies for session management
         body: JSON.stringify({ 
           email,
-          resetUrl: 'http://localhost:3000/auth-verf' // Your frontend reset page URL
+          resetUrl: 'https://super-admin-app-tau.vercel.app/auth-verf' // Your frontend reset page URL
         }),
       });
 
