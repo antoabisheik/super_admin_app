@@ -120,7 +120,7 @@ const Hardware = ({
     try {
       const result = await gymsApi.getAll(organizationId);
       if (result.success) {
-        console.log("📍 Fetched gyms:", result.data);
+        console.log("Fetched gyms:", result.data);
         setAvailableGyms(result.data || []);
       } else {
         console.error("Error fetching gyms:", result.error);

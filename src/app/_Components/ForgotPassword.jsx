@@ -10,7 +10,7 @@ const RequestResetPage = () => {
   const [loading, setLoading] = useState(false); 
 
   // Update this to match your backend URL and port
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://sbackend.duckdns.org';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
   const handleResetRequest = async () => {
     // Validate email
@@ -33,7 +33,7 @@ const RequestResetPage = () => {
     try {
       // Call your backend API endpoint for password reset
       // Adjust the path to match your backend route structure
-      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -41,7 +41,7 @@ const RequestResetPage = () => {
         credentials: 'include', // Include cookies for session management
         body: JSON.stringify({ 
           email,
-          resetUrl: 'https://super-admin-app-tau.vercel.app/auth-verf' // Your frontend reset page URL
+          resetUrl: 'http://localhost:3000/auth-verf' // Your frontend reset page URL
         }),
       });
 

@@ -50,9 +50,9 @@ exports.sendEmailNotification = functions.firestore
         sentAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      console.log("✅ Email sent successfully!");
+      console.log(" Email sent successfully!");
     } catch (err) {
-      console.error("❌ Error sending email:", err);
+      console.error("Error sending email:", err);
       await snap.ref.update({ status: "Failed", error: err.message });
     }
   });

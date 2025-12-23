@@ -10,7 +10,7 @@ import TicketSupportSystem from './NotificationSystem'
 import Image from 'next/image';
 
 // Import API client instead of Firebase
-import { organizationsApi, devicesApi } from '../api/api-client';
+import { organizationsApi, devicesApi } from '../api/api-clients-with-gyms';
 
 import LicenseManagement from './LicenseManagement'
 import CameraLayout from './CameraLayout';
@@ -101,15 +101,24 @@ const Dashboard = () => {
   // CRUD Operations for Organizations (using API)
   const handleCreateOrganization = async (organizationData) => {
     try {
+      console.log('Creating organization with data:', organizationData);
       const result = await organizationsApi.create(organizationData);
-      
+
       if (result.success) {
-        console.log('Organization created:', result.data);
+        console.log('Organization created successfully:', result.data);
+
         // Reload organizations to get fresh data
+        console.log('Fetching updated organization list...');
         const refreshResult = await organizationsApi.getAll();
+
         if (refreshResult.success) {
+          console.log('Fetched organizations:', refreshResult.data.length, 'organizations');
           setUsers(refreshResult.data);
+          console.log('State updated with new organizations');
+        } else {
+          console.error('Failed to refresh organizations:', refreshResult.error);
         }
+
         alert('Organization created successfully!');
       } else {
         throw new Error(result.error || 'Failed to create organization');
@@ -144,25 +153,38 @@ const Dashboard = () => {
 
   const handleDeleteOrganization = async (organizationId) => {
     if (!window.confirm('Are you sure you want to delete this organization?')) {
+      console.log('Dashboard: Delete cancelled by user');
       return;
     }
 
     try {
+      console.log('Dashboard: Deleting organization with ID:', organizationId);
+      console.log('Dashboard: Current organizations count before delete:', users.length);
+
       const result = await organizationsApi.delete(organizationId);
-      
+
       if (result.success) {
-        console.log('Organization deleted:', organizationId);
+        console.log('Dashboard: Organization deleted successfully:', organizationId);
+
         // Reload organizations
+        console.log('Dashboard: Fetching updated organization list after delete...');
         const refreshResult = await organizationsApi.getAll();
+
         if (refreshResult.success) {
+          console.log('Dashboard: Fetched organizations after delete:', refreshResult.data.length, 'organizations');
+          console.log('Dashboard: Organizations data:', refreshResult.data);
           setUsers(refreshResult.data);
+          console.log('Dashboard: State updated after delete');
+        } else {
+          console.error('Dashboard: Failed to refresh after delete:', refreshResult.error);
         }
+
         alert('Organization deleted successfully!');
       } else {
         throw new Error(result.error || 'Failed to delete organization');
       }
     } catch (error) {
-      console.error("Error deleting organization:", error);
+      console.error("Dashboard: Error deleting organization:", error);
       alert("Failed to delete organization: " + error.message);
     }
   };

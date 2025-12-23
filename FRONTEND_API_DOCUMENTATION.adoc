@@ -1,0 +1,1385 @@
+= Frontend API Client Documentation
+:toc:
+:toclevels: 3
+:sectnums:
+:source-highlighter: highlight.js
+
+== Overview
+
+This document describes the frontend API client implementation for the Gym Management System. The client provides a unified interface for interacting with the backend REST API, handling authentication, and managing data operations.
+
+=== Technology Stack
+
+* *Framework*: Next.js 16.0.10 (App Router)
+* *Language*: TypeScript/JavaScript
+* *Authentication*: Firebase Auth
+* *HTTP Client*: Native Fetch API
+* *Backend URL*: `https://sbackend.duckdns.org/api`
+
+=== Key Features
+
+* ✅ Automatic Firebase authentication token injection
+* ✅ Session cookie support
+* ✅ Centralized error handling
+* ✅ TypeScript interfaces for type safety
+* ✅ Promise-based async/await API
+* ✅ Automatic credential management
+
+---
+
+== Authentication
+
+=== Authentication Methods
+
+The API client supports two authentication methods:
+
+==== 1. Firebase ID Token (Recommended)
+
+Automatically retrieved from the current Firebase Auth user and included in the `Authorization` header:
+
+[source,typescript]
+----
+Authorization: Bearer <firebase_id_token>
+----
+
+==== 2. Session Cookie
+
+Set automatically after login via `/api/sessionLogin`:
+
+[source,typescript]
+----
+Cookie: session=<encrypted_session_token>
+----
+
+=== Getting Auth Token
+
+[source,typescript]
+----
+import { getAuthToken } from '@/app/api/api-clients-with-gyms';
+
+async function example() {
+  try {
+    const token = await getAuthToken();
+    console.log('Current user token:', token);
+  } catch (error) {
+    console.error('User not authenticated');
+  }
+}
+----
+
+=== Checking Authentication Status
+
+[source,typescript]
+----
+import { isAuthenticated, getCurrentUser } from '@/app/api/api-clients-with-gyms';
+
+// Check if user is authenticated
+if (isAuthenticated()) {
+  const user = getCurrentUser();
+  console.log('Logged in as:', user.email);
+}
+----
+
+=== Refreshing Auth Token
+
+[source,typescript]
+----
+import { refreshAuthToken } from '@/app/api/api-clients-with-gyms';
+
+const freshToken = await refreshAuthToken(); // Forces token refresh
+----
+
+---
+
+== API Response Format
+
+=== Standard Response Interface
+
+[source,typescript]
+----
+interface ApiResponse<T = any> {
+  success: boolean;      // Operation success status
+  data?: T;              // Response payload (if successful)
+  error?: string;        // Error message (if failed)
+  message?: string;      // Additional info message
+  status?: number;       // HTTP status code
+}
+----
+
+=== Success Response Example
+
+[source,json]
+----
+{
+  "success": true,
+  "data": {
+    "id": "org_123",
+    "name": "Fitness Empire",
+    "email": "admin@fitness.com"
+  },
+  "message": "Organization retrieved successfully"
+}
+----
+
+=== Error Response Example
+
+[source,json]
+----
+{
+  "success": false,
+  "error": "Organization not found",
+  "status": 404
+}
+----
+
+---
+
+== Data Models (TypeScript Interfaces)
+
+=== Organization Interface
+
+[source,typescript]
+----
+interface Organization {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  status?: string;
+  firstName?: string;
+  lastName?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  role?: string;
+  tags?: string[];
+  avatar?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+}
+----
+
+=== Gym Interface
+
+[source,typescript]
+----
+interface Gym {
+  gymId: string;  // Primary identifier (e.g., "FIT-GYM-001")
+  id?: string;    // Optional alias for compatibility
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  capacity: number;
+  manager: string;
+  status: 'ACTIVE' | 'MAINTENANCE' | 'CLOSED' | 'INACTIVE';
+  openingTime?: string;
+  closingTime?: string;
+  amenities?: string[];
+  latitude?: number | null;
+  longitude?: number | null;
+  members?: number;
+  monthlyRevenue?: number;
+  organizationId: string;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+}
+----
+
+=== Device Interface
+
+[source,typescript]
+----
+interface Device {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  location?: string;
+  organizationId: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+----
+
+---
+
+== Organizations API
+
+Import:
+[source,typescript]
+----
+import { organizationsApi } from '@/app/api/api-clients-with-gyms';
+----
+
+=== Get All Organizations
+
+Retrieves a list of all organizations.
+
+[source,typescript]
+----
+const result = await organizationsApi.getAll();
+
+if (result.success) {
+  console.log('Organizations:', result.data);
+}
+----
+
+*Backend Route*: `GET /organizations`
+
+*Returns*: `Promise<ApiResponse<Organization[]>>`
+
+*Example Response*:
+[source,json]
+----
+{
+  "success": true,
+  "data": [
+    {
+      "id": "org_123",
+      "name": "Fitness Empire",
+      "email": "admin@fitness.com",
+      "phone": "+1234567890",
+      "status": "active"
+    }
+  ]
+}
+----
+
+=== Get Organization by ID
+
+Retrieves a specific organization.
+
+[source,typescript]
+----
+const result = await organizationsApi.getById('org_123');
+
+if (result.success) {
+  console.log('Organization:', result.data);
+} else {
+  console.error('Error:', result.error);
+}
+----
+
+*Backend Route*: `GET /organizations/:id`
+
+*Parameters*:
+* `id` (string): Organization ID
+
+*Returns*: `Promise<ApiResponse<Organization>>`
+
+=== Create Organization
+
+Creates a new organization.
+
+[source,typescript]
+----
+const newOrg = {
+  name: 'New Fitness Center',
+  email: 'contact@newfitness.com',
+  phone: '+1234567890',
+  address: '123 Main St, City',
+  status: 'active'
+};
+
+const result = await organizationsApi.create(newOrg);
+
+if (result.success) {
+  console.log('Created organization ID:', result.data.id);
+}
+----
+
+*Backend Route*: `POST /organizations`
+
+*Parameters*:
+* `organizationData` (Partial<Organization>): Organization details
+
+*Returns*: `Promise<ApiResponse<Organization>>`
+
+*Required Fields*:
+* `name`
+* `email`
+
+=== Update Organization
+
+Updates an existing organization.
+
+[source,typescript]
+----
+const updates = {
+  name: 'Updated Name',
+  phone: '+9876543210'
+};
+
+const result = await organizationsApi.update('org_123', updates);
+
+if (result.success) {
+  console.log('Organization updated:', result.data);
+}
+----
+
+*Backend Route*: `PUT /organizations/:id`
+
+*Parameters*:
+* `id` (string): Organization ID
+* `organizationData` (Partial<Organization>): Fields to update
+
+*Returns*: `Promise<ApiResponse<Organization>>`
+
+=== Delete Organization
+
+Deletes an organization.
+
+[source,typescript]
+----
+const result = await organizationsApi.delete('org_123');
+
+if (result.success) {
+  console.log('Organization deleted successfully');
+}
+----
+
+*Backend Route*: `DELETE /organizations/:id`
+
+*Parameters*:
+* `id` (string): Organization ID
+
+*Returns*: `Promise<ApiResponse<{ id: string }>>`
+
+*Note*: Cannot delete if organization has associated devices.
+
+---
+
+== Gyms API
+
+Import:
+[source,typescript]
+----
+import { gymsApi } from '@/app/api/api-clients-with-gyms';
+----
+
+=== Get All Gyms for Organization
+
+Retrieves all gyms belonging to a specific organization.
+
+[source,typescript]
+----
+const result = await gymsApi.getAll('org_123');
+
+if (result.success) {
+  console.log('Gyms:', result.data);
+  result.data.forEach(gym => {
+    console.log(`${gym.gymId}: ${gym.name}`);
+  });
+}
+----
+
+*Backend Route*: `GET /organizations/:orgId/gyms`
+
+*Parameters*:
+* `organizationId` (string): Organization ID
+
+*Returns*: `Promise<ApiResponse<Gym[]>>`
+
+*Example Response*:
+[source,json]
+----
+{
+  "success": true,
+  "data": [
+    {
+      "gymId": "FIT-GYM-001",
+      "name": "Downtown Fitness",
+      "organizationId": "org_123",
+      "address": "123 Main St",
+      "phone": "+1234567890",
+      "email": "downtown@fitness.com",
+      "capacity": 150,
+      "manager": "John Smith",
+      "status": "ACTIVE",
+      "members": 87,
+      "monthlyRevenue": 12500
+    }
+  ]
+}
+----
+
+=== Get Gym by ID
+
+Retrieves a specific gym by its ID.
+
+[source,typescript]
+----
+const result = await gymsApi.getById('FIT-GYM-001');
+
+if (result.success) {
+  console.log('Gym:', result.data);
+}
+----
+
+*Backend Route*: `GET /gyms/:gymId`
+
+*Parameters*:
+* `gymId` (string): Gym ID (e.g., "FIT-GYM-001")
+
+*Returns*: `Promise<ApiResponse<Gym>>`
+
+=== Create Gym
+
+Creates a new gym under an organization.
+
+[source,typescript]
+----
+const gymData = {
+  name: 'Downtown Fitness',
+  address: '123 Main St',
+  phone: '+1234567890',
+  email: 'downtown@fitness.com',
+  capacity: 150,
+  manager: 'John Smith',
+  status: 'ACTIVE',
+  openingTime: '06:00',
+  closingTime: '22:00',
+  amenities: ['Cardio Equipment', 'Free Weights', 'Showers'],
+  latitude: 40.7128,
+  longitude: -74.0060
+};
+
+const result = await gymsApi.create('org_123', gymData);
+
+if (result.success) {
+  console.log('Created gym ID:', result.data.gymId);
+  alert(`Gym created successfully! ID: ${result.data.gymId}`);
+}
+----
+
+*Backend Route*: `POST /organizations/:orgId/gyms`
+
+*Parameters*:
+* `organizationId` (string): Organization ID
+* `gymData` (Partial<Gym>): Gym details
+
+*Returns*: `Promise<ApiResponse<Gym>>`
+
+*Required Fields*:
+* `name`
+* `address`
+* `phone`
+* `email`
+* `capacity`
+* `manager`
+
+*Auto-Generated*:
+* `gymId` - Backend generates in format "ORG-GYM-###" (e.g., "FIT-GYM-001")
+* `members` - Initialized to 0
+* `monthlyRevenue` - Initialized to 0
+
+=== Update Gym
+
+Updates an existing gym.
+
+[source,typescript]
+----
+const updates = {
+  name: 'Downtown Fitness Center',
+  capacity: 200,
+  status: 'MAINTENANCE'
+};
+
+const result = await gymsApi.update('FIT-GYM-001', updates);
+
+if (result.success) {
+  console.log('Gym updated:', result.data);
+}
+----
+
+*Backend Route*: `PUT /gyms/:gymId`
+
+*Parameters*:
+* `gymId` (string): Gym ID
+* `gymData` (Partial<Gym>): Fields to update
+
+*Returns*: `Promise<ApiResponse<Gym>>`
+
+*Note*: All fields are optional; only provided fields will be updated.
+
+=== Delete Gym
+
+Deletes a gym.
+
+[source,typescript]
+----
+const confirmed = window.confirm('Are you sure you want to delete this gym?');
+
+if (confirmed) {
+  const result = await gymsApi.delete('FIT-GYM-001');
+
+  if (result.success) {
+    console.log('Gym deleted successfully');
+  }
+}
+----
+
+*Backend Route*: `DELETE /gyms/:gymId`
+
+*Parameters*:
+* `gymId` (string): Gym ID
+
+*Returns*: `Promise<ApiResponse<{ success: boolean }>>`
+
+---
+
+== Devices API
+
+Import:
+[source,typescript]
+----
+import { devicesApi } from '@/app/api/api-clients-with-gyms';
+----
+
+=== Get All Devices
+
+Retrieves all devices (optionally filtered by organization).
+
+[source,typescript]
+----
+// Get all devices
+const result = await devicesApi.getAll('org_123');
+
+if (result.success) {
+  console.log('Devices:', result.data);
+}
+----
+
+*Backend Route*: `GET /devices`
+
+*Parameters*:
+* `organizationId` (string): Organization ID (for future filtering)
+
+*Returns*: `Promise<ApiResponse<Device[]>>`
+
+*Note*: Currently returns all devices; organizationId parameter is available for future backend filtering.
+
+=== Get Device by ID
+
+Retrieves a specific device.
+
+[source,typescript]
+----
+const result = await devicesApi.getById('org_123', 'device_123');
+
+if (result.success) {
+  console.log('Device:', result.data);
+}
+----
+
+*Backend Route*: `GET /devices/:deviceId`
+
+*Parameters*:
+* `organizationId` (string): Organization ID (unused, for API consistency)
+* `deviceId` (string): Device ID
+
+*Returns*: `Promise<ApiResponse<Device>>`
+
+=== Create Device
+
+Creates a new device.
+
+[source,typescript]
+----
+const deviceData = {
+  name: 'Lobby Camera 1',
+  type: 'camera',
+  status: 'active',
+  location: 'Main Entrance',
+  organizationId: 'org_123'
+};
+
+const result = await devicesApi.create('org_123', deviceData);
+
+if (result.success) {
+  console.log('Created device ID:', result.data.id);
+}
+----
+
+*Backend Route*: `POST /devices`
+
+*Parameters*:
+* `organizationId` (string): Organization ID (included in deviceData)
+* `deviceData` (Partial<Device>): Device details
+
+*Returns*: `Promise<ApiResponse<Device>>`
+
+=== Update Device
+
+Updates an existing device.
+
+[source,typescript]
+----
+const updates = {
+  status: 'inactive',
+  location: 'Storage Room'
+};
+
+const result = await devicesApi.update('org_123', 'device_123', updates);
+
+if (result.success) {
+  console.log('Device updated:', result.data);
+}
+----
+
+*Backend Route*: `PUT /devices/:deviceId`
+
+*Parameters*:
+* `organizationId` (string): Organization ID (unused, for API consistency)
+* `deviceId` (string): Device ID
+* `deviceData` (Partial<Device>): Fields to update
+
+*Returns*: `Promise<ApiResponse<Device>>`
+
+=== Delete Device
+
+Deletes a device.
+
+[source,typescript]
+----
+const result = await devicesApi.delete('org_123', 'device_123');
+
+if (result.success) {
+  console.log('Device deleted successfully');
+}
+----
+
+*Backend Route*: `DELETE /devices/:deviceId`
+
+*Parameters*:
+* `organizationId` (string): Organization ID (unused, for API consistency)
+* `deviceId` (string): Device ID
+
+*Returns*: `Promise<ApiResponse<{ id: string }>>`
+
+---
+
+== Licenses API
+
+Import:
+[source,typescript]
+----
+import { licensesApi } from '@/app/api/licenses-api';
+----
+
+=== Get Organization Licenses
+
+Retrieves all licenses for a specific organization.
+
+[source,typescript]
+----
+const licenses = await licensesApi.getByOrganization('org_123');
+console.log('Licenses:', licenses);
+----
+
+*Backend Route*: `GET /organizations/:orgId/licenses`
+
+*Parameters*:
+* `organizationId` (string): Organization ID
+
+*Returns*: `Promise<License[]>`
+
+---
+
+== Notifications API
+
+Import:
+[source,typescript]
+----
+import { notificationsApi } from '@/app/api/notifications-api';
+----
+
+=== Get Notification Templates
+
+[source,typescript]
+----
+const templates = await notificationsApi.getTemplates();
+console.log('Templates:', templates);
+----
+
+=== Get Notification History
+
+[source,typescript]
+----
+const history = await notificationsApi.getHistory();
+console.log('Notification history:', history);
+----
+
+=== Get Notification Config
+
+[source,typescript]
+----
+const config = await notificationsApi.getConfig();
+console.log('Notification config:', config);
+----
+
+---
+
+== Complete Usage Example
+
+=== React Component with Gym Management
+
+[source,typescript]
+----
+'use client';
+import { useState, useEffect } from 'react';
+import { gymsApi, organizationsApi } from '@/app/api/api-clients-with-gyms';
+import { auth } from '@/app/api/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+
+export default function GymManagement() {
+  const [user, setUser] = useState(null);
+  const [organization, setOrganization] = useState(null);
+  const [gyms, setGyms] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser || null);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Load organization
+  useEffect(() => {
+    const fetchOrg = async () => {
+      if (!user) return;
+
+      try {
+        const result = await organizationsApi.getById('org_123');
+        if (result.success) {
+          setOrganization(result.data);
+        } else {
+          setError(result.error || 'Failed to load organization');
+        }
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+
+    fetchOrg();
+  }, [user]);
+
+  // Load gyms
+  const loadGyms = async () => {
+    if (!user || !organization) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await gymsApi.getAll(organization.id);
+
+      if (result.success) {
+        setGyms(result.data || []);
+      } else {
+        setError(result.error || 'Failed to load gyms');
+      }
+    } catch (err) {
+      setError('Failed to load gyms: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadGyms();
+  }, [user, organization]);
+
+  // Create a new gym
+  const createGym = async (gymData) => {
+    if (!user || !organization) {
+      alert('You must be logged in');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await gymsApi.create(organization.id, gymData);
+
+      if (result.success) {
+        alert(`Gym created! ID: ${result.data.gymId}`);
+        loadGyms(); // Reload list
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (err) {
+      alert('Failed: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update existing gym
+  const updateGym = async (gymId, updates) => {
+    setLoading(true);
+
+    try {
+      const result = await gymsApi.update(gymId, updates);
+
+      if (result.success) {
+        alert('Gym updated successfully!');
+        loadGyms(); // Reload list
+      } else {
+        alert('Update failed: ' + result.error);
+      }
+    } catch (err) {
+      alert('Failed: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete gym
+  const deleteGym = async (gymId) => {
+    if (!window.confirm('Delete this gym?')) return;
+
+    try {
+      const result = await gymsApi.delete(gymId);
+
+      if (result.success) {
+        alert('Gym deleted!');
+        loadGyms(); // Reload list
+      } else {
+        alert('Delete failed: ' + result.error);
+      }
+    } catch (err) {
+      alert('Failed: ' + err.message);
+    }
+  };
+
+  if (!user) {
+    return <div>Please log in to continue</div>;
+  }
+
+  return (
+    <div>
+      <h1>{organization?.name || 'Organization'} - Gyms</h1>
+
+      {error && <div className="error">{error}</div>}
+
+      <button onClick={() => createGym({
+        name: 'New Gym',
+        address: '123 Street',
+        phone: '+1234567890',
+        email: 'gym@example.com',
+        capacity: 100,
+        manager: 'Manager Name',
+        status: 'ACTIVE'
+      })}>
+        Add Gym
+      </button>
+
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <ul>
+          {gyms.map(gym => (
+            <li key={gym.gymId}>
+              <strong>{gym.name}</strong> ({gym.gymId})
+              <br />
+              {gym.address} | Manager: {gym.manager}
+              <br />
+              Status: {gym.status} | Capacity: {gym.capacity}
+              <br />
+              <button onClick={() => updateGym(gym.gymId, {
+                status: 'MAINTENANCE'
+              })}>
+                Set Maintenance
+              </button>
+              <button onClick={() => deleteGym(gym.gymId)}>
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+----
+
+---
+
+== Error Handling Best Practices
+
+=== Always Check Success Status
+
+[source,typescript]
+----
+const result = await gymsApi.getAll('org_123');
+
+if (result.success) {
+  // Handle success
+  console.log('Data:', result.data);
+} else {
+  // Handle error
+  console.error('Error:', result.error);
+  alert('Operation failed: ' + result.error);
+}
+----
+
+=== Try-Catch for Network Errors
+
+[source,typescript]
+----
+try {
+  const result = await gymsApi.create('org_123', gymData);
+
+  if (result.success) {
+    console.log('Success:', result.data);
+  } else {
+    console.error('API Error:', result.error);
+  }
+} catch (error) {
+  console.error('Network Error:', error);
+  alert('Network request failed. Please check your connection.');
+}
+----
+
+=== Common Error Scenarios
+
+[source,typescript]
+----
+const result = await gymsApi.getById('invalid_id');
+
+if (!result.success) {
+  switch (result.status) {
+    case 401:
+      console.error('Not authenticated');
+      // Redirect to login
+      break;
+    case 404:
+      console.error('Gym not found');
+      break;
+    case 500:
+      console.error('Server error');
+      break;
+    default:
+      console.error('Error:', result.error);
+  }
+}
+----
+
+---
+
+== Authentication Flow Example
+
+=== Complete Login/Logout Flow
+
+[source,typescript]
+----
+import {
+  signInWithEmailAndPassword,
+  signOut
+} from 'firebase/auth';
+import { auth } from '@/app/api/firebase';
+import { isAuthenticated, getCurrentUser } from '@/app/api/api-clients-with-gyms';
+
+// Login function
+async function login(email, password) {
+  try {
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    console.log('Logged in:', userCredential.user.email);
+
+    // Create session cookie
+    const idToken = await userCredential.user.getIdToken();
+    await fetch('/api/sessionLogin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken })
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Login failed:', error.message);
+    return false;
+  }
+}
+
+// Logout function
+async function logout() {
+  try {
+    await signOut(auth);
+
+    // Clear session cookie
+    await fetch('/api/route', {
+      method: 'POST'
+    });
+
+    console.log('Logged out successfully');
+  } catch (error) {
+    console.error('Logout failed:', error);
+  }
+}
+
+// Check auth status
+function checkAuth() {
+  if (isAuthenticated()) {
+    const user = getCurrentUser();
+    console.log('User is authenticated:', user.email);
+    return true;
+  } else {
+    console.log('User is not authenticated');
+    return false;
+  }
+}
+
+// Usage
+await login('user@example.com', 'password123');
+checkAuth(); // true
+await logout();
+checkAuth(); // false
+----
+
+---
+
+== Performance Optimization
+
+=== Caching Strategies
+
+[source,typescript]
+----
+// Cache organizations in memory
+let cachedOrganizations = null;
+let cacheTimestamp = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+async function getCachedOrganizations() {
+  const now = Date.now();
+
+  // Return cached data if valid
+  if (cachedOrganizations &&
+      cacheTimestamp &&
+      (now - cacheTimestamp) < CACHE_DURATION) {
+    return cachedOrganizations;
+  }
+
+  // Fetch fresh data
+  const result = await organizationsApi.getAll();
+
+  if (result.success) {
+    cachedOrganizations = result.data;
+    cacheTimestamp = now;
+  }
+
+  return cachedOrganizations;
+}
+----
+
+=== Parallel Requests
+
+[source,typescript]
+----
+// Load multiple resources in parallel
+async function loadDashboardData(orgId) {
+  const [orgsResult, gymsResult, devicesResult] = await Promise.all([
+    organizationsApi.getAll(),
+    gymsApi.getAll(orgId),
+    devicesApi.getAll(orgId)
+  ]);
+
+  return {
+    organizations: orgsResult.success ? orgsResult.data : [],
+    gyms: gymsResult.success ? gymsResult.data : [],
+    devices: devicesResult.success ? devicesResult.data : []
+  };
+}
+----
+
+---
+
+== Testing
+
+=== Unit Test Example (Jest)
+
+[source,typescript]
+----
+import { gymsApi } from '@/app/api/api-clients-with-gyms';
+
+// Mock the apiRequest function
+jest.mock('@/app/api/api-clients-with-gyms', () => ({
+  gymsApi: {
+    getAll: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn()
+  }
+}));
+
+describe('Gym Management', () => {
+  test('should load gyms successfully', async () => {
+    const mockGyms = [
+      { gymId: 'GYM-001', name: 'Test Gym' }
+    ];
+
+    gymsApi.getAll.mockResolvedValue({
+      success: true,
+      data: mockGyms
+    });
+
+    const result = await gymsApi.getAll('org_123');
+
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(mockGyms);
+  });
+
+  test('should handle errors gracefully', async () => {
+    gymsApi.getAll.mockResolvedValue({
+      success: false,
+      error: 'Network error'
+    });
+
+    const result = await gymsApi.getAll('org_123');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Network error');
+  });
+});
+----
+
+---
+
+== Troubleshooting
+
+=== Common Issues and Solutions
+
+==== 401 Unauthorized Error
+
+*Symptom*: API calls return `success: false, status: 401`
+
+*Solution*:
+[source,typescript]
+----
+// Check if user is authenticated
+import { auth } from '@/app/api/firebase';
+
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    // Refresh token
+    const token = await user.getIdToken(true);
+    console.log('Token refreshed');
+  } else {
+    console.log('User not logged in');
+    // Redirect to login
+  }
+});
+----
+
+==== 404 Not Found Error
+
+*Symptom*: Gym operations return 404
+
+*Possible Causes*:
+* Incorrect `gymId` format
+* Gym doesn't exist in backend
+* Wrong organization ID
+
+*Solution*:
+[source,typescript]
+----
+// Verify gym exists before operations
+const gym = await gymsApi.getById('FIT-GYM-001');
+
+if (gym.success) {
+  // Gym exists, proceed with operation
+  await gymsApi.update('FIT-GYM-001', updates);
+} else {
+  console.error('Gym not found:', gym.error);
+}
+----
+
+==== Network Request Failed
+
+*Symptom*: Errors like "Network request failed" or no response
+
+*Solution*:
+[source,typescript]
+----
+// Add retry logic
+async function retryRequest(fn, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      console.log(`Retry ${i + 1}/${maxRetries}`);
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+}
+
+// Usage
+const result = await retryRequest(() =>
+  gymsApi.getAll('org_123')
+);
+----
+
+---
+
+== API Reference Summary
+
+[cols="2,3,2,3"]
+|===
+|API Module |Method |Route |Description
+
+|*organizationsApi*
+|`getAll()`
+|`GET /organizations`
+|List all organizations
+
+|
+|`getById(id)`
+|`GET /organizations/:id`
+|Get single organization
+
+|
+|`create(data)`
+|`POST /organizations`
+|Create organization
+
+|
+|`update(id, data)`
+|`PUT /organizations/:id`
+|Update organization
+
+|
+|`delete(id)`
+|`DELETE /organizations/:id`
+|Delete organization
+
+|*gymsApi*
+|`getAll(orgId)`
+|`GET /organizations/:orgId/gyms`
+|List gyms for organization
+
+|
+|`getById(gymId)`
+|`GET /gyms/:gymId`
+|Get single gym
+
+|
+|`create(orgId, data)`
+|`POST /organizations/:orgId/gyms`
+|Create gym (auto-generates gymId)
+
+|
+|`update(gymId, data)`
+|`PUT /gyms/:gymId`
+|Update gym
+
+|
+|`delete(gymId)`
+|`DELETE /gyms/:gymId`
+|Delete gym
+
+|*devicesApi*
+|`getAll(orgId)`
+|`GET /devices`
+|List all devices
+
+|
+|`getById(orgId, deviceId)`
+|`GET /devices/:deviceId`
+|Get single device
+
+|
+|`create(orgId, data)`
+|`POST /devices`
+|Create device
+
+|
+|`update(orgId, deviceId, data)`
+|`PUT /devices/:deviceId`
+|Update device
+
+|
+|`delete(orgId, deviceId)`
+|`DELETE /devices/:deviceId`
+|Delete device
+
+|*Utility Functions*
+|`isAuthenticated()`
+|N/A
+|Check if user is logged in
+
+|
+|`getCurrentUser()`
+|N/A
+|Get current Firebase user
+
+|
+|`refreshAuthToken()`
+|N/A
+|Force token refresh
+|===
+
+---
+
+== Appendix
+
+=== Environment Variables
+
+[source,bash]
+----
+# .env.local
+NEXT_PUBLIC_API_URL=https://sbackend.duckdns.org/api
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=smart-auth-68b91.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=smart-auth-68b91
+----
+
+=== File Structure
+
+----
+src/app/api/
+├── api-clients-with-gyms.ts    # Main API client (Fetch-based)
+├── api.ts                       # Legacy API client (Axios-based)
+├── types.ts                     # TypeScript type definitions
+├── firebase.js                  # Firebase configuration
+├── licenses-api.js              # License operations
+├── notifications-api.js         # Notification operations
+└── layouts-api.js              # Layout management
+----
+
+=== Import Paths
+
+[source,typescript]
+----
+// Recommended imports
+import {
+  organizationsApi,
+  gymsApi,
+  devicesApi,
+  isAuthenticated,
+  getCurrentUser,
+  refreshAuthToken
+} from '@/app/api/api-clients-with-gyms';
+
+import { licensesApi } from '@/app/api/licenses-api';
+import { notificationsApi } from '@/app/api/notifications-api';
+import { auth } from '@/app/api/firebase';
+----
+
+---
+
+_Last Updated: 2025-01-23_
+
+_Version: 1.0.0_

@@ -58,13 +58,13 @@ const LicenseManagement = ({ organizations = [], isLoadingOrgs = false }) => {
       
       if (result.success) {
         setLicenses(result.data || []);
-        console.log('✅ Licenses loaded:', result.data.length);
+        console.log('Licenses loaded:', result.data.length);
       } else {
-        console.error('❌ Error fetching licenses:', result.error);
+        console.error('Error fetching licenses:', result.error);
         setLicenses([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching licenses:', error);
+      console.error('Error fetching licenses:', error);
       setLicenses([]);
     } finally {
       setIsLoadingLicenses(false);

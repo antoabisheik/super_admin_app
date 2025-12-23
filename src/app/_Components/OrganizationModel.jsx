@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-// REMOVED: Direct Firebase imports
-// import { db } from '../api/firebase';
-// import { collection, doc, setDoc, updateDoc } from "firebase/firestore";
 
-// ADDED: Import API client
-import { organizationsApi } from '../api/api-client';
-
-const OrganizationModal = ({ isOpen, onClose, initialData = null }) => {
+const OrganizationModal = ({ isOpen, onClose, initialData = null, onSave }) => {
   const [formData, setFormData] = useState({
     email: '',
     firstName: '',
@@ -134,19 +128,18 @@ const OrganizationModal = ({ isOpen, onClose, initialData = null }) => {
         avatar: formData.firstName.charAt(0).toUpperCase(),
       };
 
-      let result;
+      // Add id to organizationData if updating
       if (initialData?.id) {
-        // Update existing organization via API
-        result = await organizationsApi.update(initialData.id, organizationData);
-      } else {
-        // Create new organization via API
-        result = await organizationsApi.create(organizationData);
+        organizationData.id = initialData.id;
       }
 
-      // Check if API call was successful
-      if (result.success) {
-        console.log('Organization saved successfully:', result.data);
-        
+      console.log('Modal: Calling parent onSave with data:', organizationData);
+
+      // Call parent's onSave handler (Dashboard will handle API call and refresh)
+      if (onSave) {
+        await onSave(organizationData);
+        console.log('Modal: onSave completed successfully');
+
         // Close modal on success
         onClose();
 
@@ -164,13 +157,8 @@ const OrganizationModal = ({ isOpen, onClose, initialData = null }) => {
           status: 'Active',
           tags: ['Marketing']
         });
-
-        // Show success message (optional)
-        alert(`Organization ${initialData ? 'updated' : 'created'} successfully!`);
       } else {
-        // Handle API error
-        console.error('API error:', result.error);
-        alert(`Failed to ${initialData ? 'update' : 'create'} organization: ${result.error}`);
+        console.error('Modal: No onSave handler provided!');
       }
 
     } catch (error) {

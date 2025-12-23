@@ -703,7 +703,7 @@ const fetchDevices = async (organizationId, gymId = null) => {
                 ) : (
                   <div className="text-sm text-gray-500 p-3 bg-yellow-50 border border-yellow-200 rounded">
                     <div className="flex items-center gap-2 text-yellow-800">
-                      <span>⚠</span>
+                      <span>!</span>
                       No gym locations found
                     </div>
                   </div>
@@ -733,7 +733,6 @@ const fetchDevices = async (organizationId, gymId = null) => {
                   onClick={() => setShowUploadModal(true)}
                   className="w-full p-3 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
                 >
-                  <span className="text-lg">📤</span>
                   Upload Custom Layout
                 </button>
               </div>

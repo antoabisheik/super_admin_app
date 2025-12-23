@@ -12,12 +12,12 @@ import {
 } from 'lucide-react';
 
 // UPDATED: Import API client instead of direct Firebase
-import { organizationsApi } from '../api/api-client';
+import { organizationsApi } from '../api/api-clients-with-gyms';
 
 import { useParams, useRouter } from 'next/navigation';
 
-// UPDATED: Add onEdit prop to receive the edit handler from parent
-const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg, onEdit, data = [] }) => {
+// UPDATED: Add onEdit and onDelete props to receive handlers from parent
+const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg, onEdit, onDelete, data = [] }) => {
   const router = useRouter();
   
   // View mode state (grid or list)
@@ -90,23 +90,12 @@ const MainTable = ({ searchTerm, setSearchTerm, onNavigateToOrg, onEdit, data = 
     }
   };
 
-  // UPDATED: Use API for delete
-  const handleDelete = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this organization?')) {
-      return;
-    }
-
-    try {
-      const result = await organizationsApi.delete(userId);
-      if (result.success) {
-        console.log('Organization deleted successfully');
-        // Parent component should refresh the data
-      } else {
-        alert('Failed to delete organization: ' + result.error);
-      }
-    } catch (error) {
-      console.error('Error deleting organization:', error);
-      alert('An error occurred while deleting the organization');
+  // UPDATED: Delegate delete to parent component
+  const handleDelete = (userId) => {
+    if (onDelete) {
+      onDelete(userId);
+    } else {
+      console.error('MainTable: No onDelete handler provided by parent');
     }
   };
 

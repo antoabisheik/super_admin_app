@@ -226,7 +226,7 @@ const NotificationSystem = () => {
     }
   };
 
-  // ✅ Save config via middleware
+  // Save config via middleware
   const handleSaveConfig = async (configType, configData) => {
     try {
       const result = await notificationsApi.config.update(configType, configData);

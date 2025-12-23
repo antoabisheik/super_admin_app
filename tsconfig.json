@@ -44,7 +44,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/dev/types/**/*.ts"
-  ],
+, "src/app/api/api-client.ts"  ],
   "exclude": [
     "node_modules"
   ]

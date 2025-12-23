@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from 'react';
 import { FaEyeSlash, FaPhoneAlt } from 'react-icons/fa';
 import { MdOutlineVisibility } from 'react-icons/md';
@@ -108,7 +107,7 @@ const SignUpForm = () => {
     }
   };
 
-  // ✅ Google Sign-in - send to backend for verification
+  // Google Sign-in - send to backend for verification
   const handleGoogleSignUp = async () => {
     setLoading(true);
     
