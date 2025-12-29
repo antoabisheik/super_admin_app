@@ -68,7 +68,7 @@ function SignInForm() {
 
     setLoading(true);
     try {
-      const res = await fetch(`https://sbackend.duckdns.org/api/Sauth/google-login/auth/login`, {
+      const res = await fetch(`https://sbackend.duckdns.org/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
