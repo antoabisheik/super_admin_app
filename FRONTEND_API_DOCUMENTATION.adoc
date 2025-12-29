@@ -18,12 +18,12 @@ This document describes the frontend API client implementation for the Gym Manag
 
 === Key Features
 
-* ✅ Automatic Firebase authentication token injection
-* ✅ Session cookie support
-* ✅ Centralized error handling
-* ✅ TypeScript interfaces for type safety
-* ✅ Promise-based async/await API
-* ✅ Automatic credential management
+* Automatic Firebase authentication token injection
+* Session cookie support
+* Centralized error handling
+* TypeScript interfaces for type safety
+* Promise-based async/await API
+* Automatic credential management
 
 ---
 
