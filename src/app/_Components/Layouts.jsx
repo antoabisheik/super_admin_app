@@ -65,6 +65,8 @@ function Layouts() {
         }
       });
       
+
+      
       const data = await response.json();
       console.log('Raw response from backend:', data);
       
