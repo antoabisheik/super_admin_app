@@ -12,23 +12,23 @@ const api = axios.create({
 
 export const organizationAPI = {
   // CRUD operations for organizations
-  getAll: () => api.get('/api/users/organizations/'),
-  get: (id: number) => api.get(`/api/users/organizations/${id}/`),
-  create: (data: any) => api.post('/api/users/organizations/', data),
-  update: (id: number, data: any) => api.put(`/api/users/organizations/${id}/`, data),
-  delete: (id: number) => api.delete(`/api/users/organizations/${id}/`),
+  getAll: () => api.get('/users/organizations/'),
+  get: (id: number) => api.get(`/users/organizations/${id}/`),
+  create: (data: any) => api.post('/users/organizations/', data),
+  update: (id: number, data: any) => api.put(`/users/organizations/${id}/`, data),
+  delete: (id: number) => api.delete(`/users/organizations/${id}/`),
 };
 
 export const gymAPI = {
   // CRUD operations for gyms
   getAll: (organizationId?: number) => {
     const params = organizationId ? { organization: organizationId } : {};
-    return api.get('/api/users/gyms/', { params });
+    return api.get('/users/gyms/', { params });
   },
-  get: (id: number) => api.get(`/api/users/gyms/${id}/`),
-  create: (data: any) => api.post('/api/users/gyms/', data),
-  update: (id: number, data: any) => api.put(`/api/users/gyms/${id}/`, data),
-  delete: (id: number) => api.delete(`/api/users/gyms/${id}/`),
+  get: (id: number) => api.get(`/users/gyms/${id}/`),
+  create: (data: any) => api.post('/users/gyms/', data),
+  update: (id: number, data: any) => api.put(`/users/gyms/${id}/`, data),
+  delete: (id: number) => api.delete(`/users/gyms/${id}/`),
 };
 
 export const cameraAPI = {
@@ -37,48 +37,48 @@ export const cameraAPI = {
     const params: any = {};
     if (gymId) params.gym = gymId;
     if (organizationId) params.organization = organizationId;
-    return api.get('/api/users/cameras/', { params });
+    return api.get('/users/cameras/', { params });
   },
-  get: (id: number) => api.get(`/api/users/cameras/${id}/`),
-  create: (data: any) => api.post('/api/users/cameras/', data),
-  update: (id: number, data: any) => api.put(`/api/users/cameras/${id}/`, data),
-  delete: (id: number) => api.delete(`/api/users/cameras/${id}/`),
-  
+  get: (id: number) => api.get(`/users/cameras/${id}/`),
+  create: (data: any) => api.post('/users/cameras/', data),
+  update: (id: number, data: any) => api.put(`/users/cameras/${id}/`, data),
+  delete: (id: number) => api.delete(`/users/cameras/${id}/`),
+
   // NEW: Direct camera streaming operations
-  getLiveCameras: (ipPrefix: string = '192.168.0.') => 
-    api.get('/api/users/cameras/live/', { params: { ip_prefix: ipPrefix } }),
-  
-  getCamerasBySubnet: (subnet: string) => 
-    api.get(`/api/users/cameras/subnet/${subnet}/`),
-  
-  discoverCameras: (subnet: string = '192.168.0.') => 
-    api.post('/api/users/cameras/discover/', { subnet }),
-  
+  getLiveCameras: (ipPrefix: string = '192.168.0.') =>
+    api.get('/users/cameras/live/', { params: { ip_prefix: ipPrefix } }),
+
+  getCamerasBySubnet: (subnet: string) =>
+    api.get(`/users/cameras/subnet/${subnet}/`),
+
+  discoverCameras: (subnet: string = '192.168.0.') =>
+    api.post('/users/cameras/discover/', { subnet }),
+
   // Direct live stream URL (MJPEG)
-  getLiveStreamUrl: (id: number) => 
-    `${API_BASE_URL}/api/users/cameras/${id}/live-stream/`,
-  
+  getLiveStreamUrl: (id: number) =>
+    `${API_BASE_URL}/users/cameras/${id}/live-stream/`,
+
   // Quick snapshot using OpenCV
-  getQuickSnapshot: (id: number) => 
-    `${API_BASE_URL}/api/users/cameras/${id}/quick-snapshot/`,
-  
+  getQuickSnapshot: (id: number) =>
+    `${API_BASE_URL}/users/cameras/${id}/quick-snapshot/`,
+
   // Legacy FFmpeg HLS streaming (keep for backward compatibility)
-  startStream: (id: number) => api.post(`/api/users/cameras/${id}/start_stream/`),
-  stopStream: (id: number) => api.post(`/api/users/cameras/${id}/stop_stream/`),
-  getSnapshot: (id: number) => api.get(`/api/users/cameras/${id}/snapshot/`, { responseType: 'blob' }),
-  discoverAndUpdateStatus: () => api.post('/api/users/cameras/discover_and_update_status/'),
-  
+  startStream: (id: number) => api.post(`/users/cameras/${id}/start_stream/`),
+  stopStream: (id: number) => api.post(`/users/cameras/${id}/stop_stream/`),
+  getSnapshot: (id: number) => api.get(`/users/cameras/${id}/snapshot/`, { responseType: 'blob' }),
+  discoverAndUpdateStatus: () => api.post('/users/cameras/discover_and_update_status/'),
+
   // Grid view for frontend
   getGridStatus: (gymId?: number | null, organizationId?: number | null) => {
     const params: any = {};
     if (gymId) params.gym = gymId;
     if (organizationId) params.organization = organizationId;
-    return api.get('/api/users/camera-grid/', { params });
+    return api.get('/users/camera-grid/', { params });
   },
-  
+
   // Direct snapshot by IP (legacy)
-  getSnapshotByIP: (cameraIP: string) => 
-    `${API_BASE_URL}/api/users/cameras/snapshot/${cameraIP}/`,
+  getSnapshotByIP: (cameraIP: string) =>
+    `${API_BASE_URL}/users/cameras/snapshot/${cameraIP}/`,
 };
 
 // Types for TypeScript

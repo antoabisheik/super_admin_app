@@ -9,12 +9,12 @@ import { getStorage } from 'firebase/storage';
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: "smart-auth-68b91.firebaseapp.com",
-  projectId: "smart-auth-68b91",
-  storageBucket: "smart-auth-68b91.firebasestorage.app",
+  authDomain: "smartan-fitness.firebaseapp.com",
+  projectId: "smartan-fitness",
+  storageBucket: "smartan-fitness.firebasestorage.app",
   messagingSenderId: "256816365212",
-  appId: "1:256816365212:web:4add8b947a168dc7253759",
-  measurementId: "G-3VQ7E9LWG9"
+  appId: "1:673689510832:web:aa40ba8dab56761fd0ec75",
+  measurementId: "G-8JD012XVXR"
 };
 
 
