@@ -63,7 +63,7 @@ const SignUpForm = () => {
       // Step 3: Save additional user data to your backend
       try {
         const idToken = await userCredential.user.getIdToken();
-        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://sbackend.duckdns.org/api';
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://smartanbackend.duckdns.org/api';
 
         await fetch(`${API_BASE_URL}/auth/save-user-data`, {
           method: "POST",
@@ -116,7 +116,7 @@ const SignUpForm = () => {
       const idToken = await result.user.getIdToken();
 
       // Send to backend for session creation and user data storage
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://sbackend.duckdns.org/api';
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://smartanbackend.duckdns.org/api';
       const res = await fetch(`${API_BASE_URL}/auth/google-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
