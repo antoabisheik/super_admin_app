@@ -20,7 +20,7 @@ function SignInForm() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const BASE_API_URL = 'https://smartanbackend.duckdns.org/api'
+  const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
   useEffect(() => {
     const handleRedirect = async () => {
       try {
@@ -28,7 +28,7 @@ function SignInForm() {
         if (result?.user) {
           const idToken = await result.user.getIdToken();
 
-          const res = await fetch(`${BASE_API_URL}/Sauth/google-login`, {
+          const res = await fetch(`${BASE_API_URL}/auth/google-login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
